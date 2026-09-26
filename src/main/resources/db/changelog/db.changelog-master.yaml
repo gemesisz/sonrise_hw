@@ -1,0 +1,3 @@
+# Each schema change is its own file under changes/, listed here explicitly
+# so the order is visible and reviewable.
+databaseChangeLog: []

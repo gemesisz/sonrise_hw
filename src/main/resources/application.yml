@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: alerting-service
+  datasource:
+    url: jdbc:h2:mem:alerting;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    # Liquibase owns the schema; Hibernate only checks that entities match it.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  h2:
+    console:
+      enabled: true
