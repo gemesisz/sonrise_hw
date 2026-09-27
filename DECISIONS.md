@@ -70,6 +70,8 @@ Format: **context → decision → alternatives considered → why.**
 - **Decision:** `category`, `channel`, `user_category`, `user_channel`, all with PKs and FKs.
 - **Why:** admin-manageable, referentially safe. A startup check ensures every
   `channel` row has a matching strategy implementation (and vice versa).
+- **Correction (wrap-up review):** this startup check was claimed here but only built in phase 5
+  (D50) — until then this line was false.
 
 ### D11 — Channel address lives on `user_channel`, not on the user table
 - **Context:** my initial plan was an optional `email` on the user table, with extra
@@ -554,3 +556,33 @@ Format: **context → decision → alternatives considered → why.**
 - Note: the first browser run seeded a Slack link to the real `hooks.slack.com` with a fake token,
   so two real (harmless, rejected: `404 no_team`) calls went to Slack. The rerun disabled the Slack
   channel before sending test events.
+
+## Phase 5 — Wrap-up
+
+### D50 — Startup check: channel rows and implementations must match
+- **Found in the wrap-up review:** D10 claimed this check existed and PLAN listed it as pending;
+  it had never been built. Built it rather than weaken the claim.
+- `ChannelImplementationCheck` (an `ApplicationRunner`) compares `channel` codes with the
+  `NotificationChannel` beans and stops the application with both differences named. It uses the
+  beans directly, not the registry, because some tests mock the registry.
+- **Verified:** unit tests for both mismatch directions; renaming the Slack code in a real build
+  made the packaged app refuse to start with
+  `channel rows without an implementation [SLACK], implementations without a channel row [SLACKX]`.
+
+### D51 — Wrap-up review: docs checked against the code
+- **README** rewritten: the brief verbatim (PROMPTS.md referred to it, but it wasn't there), how to
+  read the repo, what was built, how to run, demo (browser and curl), API table, configuration,
+  tests, known limitations, layout.
+- **Every command in the README was run as documented:** Mailpit in Docker + the packaged app + the
+  curl walkthrough → the alert email arrived in Mailpit (`[CRITICAL] Demo: Bitcoin down 25% in
+  24h`) and the notification was `SENT`; `mvn spring-boot:run` with the documented port override
+  started and served the page behind the login. Environment variable names cross-checked against
+  `application.yml`.
+- The first demo attempt failed with 401s: port 8080 was already taken by an app run from the IDE,
+  so curl hit that instance. Diagnosed from the log (`Port 8080 was already in use`), left the
+  other process alone, reran on a free port, and added a port-override tip to the README.
+- **PLAN** brought in line with the code: phase statuses, data model "as built" notes, the
+  architecture picture with the real class names (EventStore, NotificationSender, retry job, age
+  rule), and the phase 3 test approach (full-context MockMvc + real-HTTP security tests, not the
+  `@WebMvcTest` slices the draft named).
+- Scanned the code for leftover TODO/FIXME: none.

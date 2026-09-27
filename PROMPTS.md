@@ -11,7 +11,7 @@ followed by what the AI did and what was checked or corrected.
 **Prompt 1:**
 > This is our task:
 >
-> *(full task brief pasted — see README / task description)*
+> *(full task brief pasted — quoted verbatim in the README, "The brief")*
 >
 > Some basic information: I use spring boot + maven, include liquibase for
 > database changes, also jpa and hibernate and a h2 memory database is enough
@@ -327,6 +327,19 @@ Validation applied:
   unreadable nested email errors, a missing favicon — all fixed and re-verified (D49).
 - Two of its own script mistakes (zsh word splitting, stale CSRF header) were diagnosed rather
   than blamed on the app.
+
+**Prompt 16:**
+> lets do the wrap-up phase
+
+AI response: reviewed the docs against the code and rewrote the README (D50, D51).
+Validation applied:
+- Found a false claim in its own decision log: a startup check D10 said existed was never built.
+  Built it, proved it stops a misconfigured app, and marked the old claim as corrected.
+- Found that PROMPTS.md pointed to the brief in the README, which didn't contain it — added it.
+- Ran every README command as written (Mailpit + app + curl walkthrough → email arrived;
+  `mvn spring-boot:run` with port override) instead of documenting untested steps.
+- Its first demo run failed because port 8080 was taken by my IDE-run app; it diagnosed this from
+  the log and did not touch my process.
 
 ---
 
