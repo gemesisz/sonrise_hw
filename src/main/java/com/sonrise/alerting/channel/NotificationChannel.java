@@ -26,4 +26,11 @@ public interface NotificationChannel {
      * @throws NotificationDeliveryException if delivery failed (the caller decides on retry)
      */
     void send(String address, Event event);
+
+    /**
+     * How the address is shown in the admin API. Override to mask secrets.
+     */
+    default String displayAddress(String address) {
+        return address;
+    }
 }

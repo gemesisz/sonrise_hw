@@ -58,17 +58,36 @@ public class NotificationRetryJob {
                 .stream()
                 .map(this::toRetry)
                 .toList());
-        for (Retry retry : due) {
-            if (retry.address() == null) {
-                sender.abandon(retry.notificationId(), "Channel link removed or disabled; not retried");
-            } else {
-                sender.send(retry.notificationId(), retry.channelCode(), retry.address(), retry.event());
-            }
-        }
+        due.forEach(this::send);
         if (!due.isEmpty()) {
             log.info("Retried {} notification(s)", due.size());
         }
         return due.size();
+    }
+
+    /**
+     * Retries one FAILED notification immediately (admin "retry now"), ignoring its due time.
+     *
+     * @return {@code false} if it doesn't exist or is not FAILED (nothing was sent)
+     */
+    public boolean retryNow(Long notificationId) {
+        Retry retry = transactions.execute(status -> notificationRepository.findWithDetailsById(notificationId)
+                .filter(n -> n.getStatus() == NotificationStatus.FAILED)
+                .map(this::toRetry)
+                .orElse(null));
+        if (retry == null) {
+            return false;
+        }
+        send(retry);
+        return true;
+    }
+
+    private void send(Retry retry) {
+        if (retry.address() == null) {
+            sender.abandon(retry.notificationId(), "Channel link removed or disabled; not retried");
+        } else {
+            sender.send(retry.notificationId(), retry.channelCode(), retry.address(), retry.event());
+        }
     }
 
     private Retry toRetry(Notification notification) {

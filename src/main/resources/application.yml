@@ -15,6 +15,11 @@ spring:
   h2:
     console:
       enabled: true
+  # The single admin user (HTTP basic). Password: set SPRING_SECURITY_USER_PASSWORD, otherwise
+  # Spring Boot generates a random one and prints it in the startup log.
+  security:
+    user:
+      name: ${ADMIN_USERNAME:admin}
   # SMTP server for the EMAIL channel. Defaults to a local mail catcher (e.g. Mailpit/MailHog on 1025).
   mail:
     host: ${MAIL_HOST:localhost}

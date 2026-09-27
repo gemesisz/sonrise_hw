@@ -4,3 +4,8 @@ alerting:
   detection:
     # Never poll the live feeds from test contexts; tests call runNow()/detect() explicitly.
     scheduling-enabled: false
+
+spring:
+  security:
+    user:
+      password: test-password

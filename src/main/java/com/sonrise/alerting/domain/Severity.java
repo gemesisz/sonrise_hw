@@ -19,4 +19,11 @@ public enum Severity {
     public List<Severity> andBelow() {
         return Arrays.stream(values()).filter(s -> s.compareTo(this) <= 0).toList();
     }
+
+    /**
+     * This severity and every more severe one (for "at least X" filters).
+     */
+    public List<Severity> andAbove() {
+        return Arrays.stream(values()).filter(s -> s.compareTo(this) >= 0).toList();
+    }
 }

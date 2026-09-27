@@ -55,6 +55,32 @@ public class DetectionScheduler {
                 .toList();
     }
 
+    /**
+     * Runs one enabled source now.
+     *
+     * @throws IllegalArgumentException if there is no such source
+     * @throws IllegalStateException    if the source is disabled
+     */
+    public SourceRun runNow(String code) {
+        AbstractEventSource<?> source = sources.stream()
+                .filter(s -> s.code().equals(code))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No event source " + code));
+        if (!source.isEnabled()) {
+            throw new IllegalStateException("Event source " + code + " is disabled");
+        }
+        return run(source);
+    }
+
+    /**
+     * Every source with its configuration and when it last started (null = not yet run).
+     */
+    public List<SourceStatus> sources() {
+        return sources.stream()
+                .map(s -> new SourceStatus(s.code(), s.isEnabled(), s.interval(), lastStarted.get(s.code())))
+                .toList();
+    }
+
     private boolean isDue(AbstractEventSource<?> source) {
         Instant last = lastStarted.get(source.code());
         return last == null || !clock.instant().isBefore(last.plus(source.interval()));

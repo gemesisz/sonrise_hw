@@ -26,4 +26,7 @@ public interface UserChannelRepository extends JpaRepository<UserChannel, UserCh
                                and s.minSeverity in :severities)
             """)
     List<UserChannel> findDeliveryTargets(Long categoryId, Collection<Severity> severities);
+
+    @Query("select uc from UserChannel uc join fetch uc.channel where uc.user.id in :userIds")
+    List<UserChannel> findWithChannelByUserIdIn(Collection<Long> userIds);
 }

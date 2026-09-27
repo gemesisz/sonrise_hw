@@ -76,6 +76,17 @@ public class SlackChannel implements NotificationChannel {
         }
     }
 
+    /**
+     * The webhook URL is a secret (anyone holding it can post): show only enough to recognise it.
+     */
+    @Override
+    public String displayAddress(String address) {
+        if (address == null || address.length() <= 8) {
+            return "<webhook URL>";
+        }
+        return "https://" + WEBHOOK_HOST + WEBHOOK_PATH_PREFIX + "…" + address.substring(address.length() - 4);
+    }
+
     private static String redact(String message, String webhookUrl) {
         return message == null ? null : message.replace(webhookUrl, "<webhook URL>");
     }
