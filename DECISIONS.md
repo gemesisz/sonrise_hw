@@ -438,3 +438,19 @@ Format: **context → decision → alternatives considered → why.**
 - **Fix:** error responses → `Slack webhook returned <status>: <body>`; any other client error →
   the message with the URL replaced by `<webhook URL>`. New unit test for the network-error case;
   the end-to-end test asserts the secret path never reaches the database.
+
+### D42 — PersistenceMappingTest rewritten on the repositories (closes D21)
+- Persisting and loading now go through the repositories; the `EntityManager` is only used to
+  clear the persistence context (so reloads really hit the database) and for raw SQL the entities
+  can't express (a link to a non-existent user, a row without an address).
+- **Stricter constraint checks:** every "database rejects this" test now asserts that the *root
+  cause* is H2's `JdbcSQLIntegrityConstraintViolationException` naming the expected constraint or
+  column — the name-only check is what passed for the wrong reason in D20. The outer exception
+  type is deliberately not asserted: repositories wrap it in Spring's
+  `DataIntegrityViolationException`, raw SQL in Hibernate's (the first draft asserted Spring's
+  type everywhere and failed on the two raw-SQL tests).
+- **New coverage** for queries added after phase 1: `existsBySourceAndExternalId`,
+  `findWithCategoryById` (category really initialized — D26 depends on it) and `findDue`
+  (status filter, due boundary, oldest first, batch limit, everything needed for sending loaded).
+- **Mutation check:** removing the unique constraint from the event changeset makes the
+  duplicate-event test fail — it tests the database, not the entity annotation.

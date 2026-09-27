@@ -285,6 +285,16 @@ Validation applied:
 - Its assumed timeout wording ("timed out") was wrong — the JDK client says "Request cancelled";
   the test asserts elapsed time instead.
 
+**Prompt 13:**
+> rewrite the PersistenceMappingTest first
+
+AI response: rewrote the test on the repositories, kept every existing check (including my
+own later additions), made constraint assertions check the real root cause, and added tests
+for the three repository queries added since phase 1 (D42). Validation applied:
+- First run: 2 failures — the AI had assumed Spring's exception wrapper for raw SQL too;
+  the root causes were exactly right, so the helper now asserts only the root cause.
+- Mutation check: removing the event unique constraint from the changeset fails the test.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->
