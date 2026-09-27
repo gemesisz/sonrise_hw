@@ -2,6 +2,7 @@ package com.sonrise.alerting.admin;
 
 import com.sonrise.alerting.admin.dto.ChannelLinkRequest;
 import com.sonrise.alerting.admin.dto.ChannelLinkResponse;
+import com.sonrise.alerting.admin.dto.ChannelUpdateRequest;
 import com.sonrise.alerting.admin.dto.SubscriptionRequest;
 import com.sonrise.alerting.admin.dto.SubscriptionResponse;
 import com.sonrise.alerting.admin.dto.UserRequest;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -79,6 +81,13 @@ public class UserAdminController {
     public ChannelLinkResponse linkChannel(@PathVariable Long id, @PathVariable String channel,
                                            @Valid @RequestBody ChannelLinkRequest request) {
         return service.linkChannel(id, channel, request);
+    }
+
+    /** Enables or disables a channel link without re-sending the (possibly secret) address. */
+    @PatchMapping("/{id}/channels/{channel}")
+    public ChannelLinkResponse setChannelEnabled(@PathVariable Long id, @PathVariable String channel,
+                                                 @Valid @RequestBody ChannelUpdateRequest request) {
+        return service.setChannelEnabled(id, channel, request.enabled());
     }
 
     @DeleteMapping("/{id}/channels/{channel}")

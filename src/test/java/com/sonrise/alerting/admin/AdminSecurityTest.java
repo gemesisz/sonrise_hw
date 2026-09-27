@@ -66,6 +66,36 @@ class AdminSecurityTest {
     }
 
     @Test
+    void adminPageRequiresLoginAndIsServedWithStrictContentSecurityPolicy() {
+        assertThat(client().get().uri("/").retrieve().toBodilessEntity().getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        ResponseEntity<String> page = client().get().uri("/")
+                .header(HttpHeaders.AUTHORIZATION, basic("admin", "test-password")).retrieve().toEntity(String.class);
+        assertThat(page.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(page.getBody()).contains("<title>Alerting admin</title>").contains("src=\"app.js\"");
+        assertThat(page.getHeaders().getFirst("Content-Security-Policy"))
+                .contains("default-src 'self'")
+                .contains("frame-ancestors 'none'");
+        // The page's first response already hands out the CSRF cookie it needs for writes.
+        assertThat(xsrfToken(page.getHeaders().get(HttpHeaders.SET_COOKIE))).isNotBlank();
+
+        assertThat(client().get().uri("/app.js")
+                .header(HttpHeaders.AUTHORIZATION, basic("admin", "test-password")).retrieve().toBodilessEntity()
+                .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void h2ConsoleIsNotBrokenByTheStrictPolicy() {
+        ResponseEntity<Void> console = client().get().uri("/h2-console/")
+                .header(HttpHeaders.AUTHORIZATION, basic("admin", "test-password")).retrieve().toBodilessEntity();
+        // Its own chain: no CSP (it uses inline scripts) and framing allowed from the same origin.
+        assertThat(console.getHeaders().getFirst("Content-Security-Policy")).isNull();
+        assertThat(console.getHeaders().getFirst("X-Frame-Options")).isEqualTo("SAMEORIGIN");
+    }
+
+    @Test
     void writesNeedTheCsrfTokenFromTheCookie() {
         String auth = basic("admin", "test-password");
         String body = "{\"name\": \"Mallory's victim\"}";

@@ -503,3 +503,54 @@ Format: **context → decision → alternatives considered → why.**
   for a missing token — misleading and hard to debug.
 - **Fix:** permit the ERROR dispatcher type (it only renders an error that already happened).
   Unauthenticated requests to the API itself are still 401 (tested).
+
+## Phase 4 — Admin page
+
+### D46 — Plain HTML/CSS/JS, secure by construction
+- **Decision:** `static/index.html`, `app.css`, `app.js` served by Spring at `/`, behind the same
+  login. No framework, no build step; the page only calls the admin API (no business logic).
+- Tabs: Users (subscriptions, channel links, rename, delete), Events (filters, paging),
+  Notifications (status filter, paging, "Retry now" on FAILED only), Detection (sources,
+  "run all now", test event form), Channels (global enable/disable).
+- **Untrusted data:** event titles come from external RSS feeds. All data goes into the DOM via
+  `textContent` (an `el()` helper), never `innerHTML`; feed links are only clickable for http(s)
+  (no `javascript:` URLs). A scan confirms no `innerHTML`/`eval`/inline handlers in the page.
+- **CSP** `default-src 'self'` (plus `object-src 'none'`, `frame-ancestors 'none'`, …) as a second
+  line of defence. That would break the H2 console (inline scripts), so security is now **two
+  filter chains**: a relaxed one for `/h2-console/**` only (no CSRF, same-origin frames, no CSP) and
+  the strict one for everything else. Tests assert the CSP on `/` and its absence on the console.
+- CSRF: the page reads the `XSRF-TOKEN` cookie before every write and sends it as `X-XSRF-TOKEN`.
+  The token cookie is re-issued on responses, so it must be read per request, not cached — the
+  seeding script hit exactly this (stale header vs fresh cookie → 403); the page does it right.
+
+### D47 — API gap found while designing the page: toggling a channel link needed the secret
+- `PUT /users/{id}/channels/{channel}` requires the address, but responses mask Slack webhook URLs
+  (D43) — so the page could not enable/disable a Slack link without the admin re-entering the
+  secret. Added `PATCH /users/{id}/channels/{channel}` with only `{"enabled": …}`; a test checks the
+  real address is untouched.
+
+### D48 — Verified in a real browser (headless Brave over the DevTools protocol)
+- Unit/API tests can't prove the page works with the real CSP, cookies and basic auth, so a Node
+  script drove headless Brave (throwaway profile): answered the basic-auth challenge, recorded
+  console errors / CSP violations / exceptions, checked the DOM, performed UI writes and took
+  screenshots of every tab, including a 400px phone width.
+- 15/15 checks pass: users/events/notifications/sources/channels render; create user via the form
+  and toggle a Slack link (real CSRF round trip); Slack URL masked; retry buttons only on FAILED;
+  run-now and test-event forms work; no horizontal scroll at 400px.
+- **XSS probe:** a test event titled `<img src=x onerror="document.title='XSS'">` is shown as text,
+  creates no `<img>` element, and doesn't execute.
+- The script lives outside the repo (scratchpad); it needs a local Chromium browser and Node.
+
+### D49 — Fixes found by the browser run
+- **Validation messages came back in Hungarian** ("nem lehet üres") in an English UI: Bean
+  Validation followed the JVM/browser locale (`hu_HU` here). Fixed the web locale to English
+  (`spring.web.locale: en`, `locale-resolver: fixed`; the `spring.mvc.*` names are deprecated in
+  Boot 4). The browser check now asserts the English message.
+- **Email errors were unreadable:** Spring Mail nests the whole exception chain into its message
+  (`Mail server connection failed. Failed messages: org.eclipse.angus…nested exception is: …`).
+  `EmailChannel` now reports only the most specific cause (`… failed: Connection refused`); unit
+  test added with the real-world message shape.
+- Missing favicon (a 404 in every page load) — added `favicon.svg`.
+- Note: the first browser run seeded a Slack link to the real `hooks.slack.com` with a fake token,
+  so two real (harmless, rejected: `404 no_team`) calls went to Slack. The rerun disabled the Slack
+  channel before sending test events.

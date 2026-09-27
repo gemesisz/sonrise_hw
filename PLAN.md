@@ -106,7 +106,7 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
   list, events list, notifications list + retry, trigger detection, inject fake event.
 - Validation: `@WebMvcTest` tests for validation errors, auth (401 without credentials).
 
-**Phase 4 — Admin HTML page**
+**Phase 4 — Admin HTML page** ✅ (D46–D49)
 - Static HTML + JS served by Spring, calling the REST API only (no logic in the page).
 
 **Phase 5 — Wrap-up**

@@ -4,6 +4,7 @@ import com.sonrise.alerting.domain.Event;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -57,7 +58,9 @@ public class EmailChannel implements NotificationChannel {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            throw new NotificationDeliveryException("Email to " + address + " failed: " + e.getMessage(), e);
+            // Spring Mail nests the whole exception chain into its message; the admin only needs the cause.
+            throw new NotificationDeliveryException(
+                    "Email to " + address + " failed: " + NestedExceptionUtils.getMostSpecificCause(e).getMessage(), e);
         }
     }
 

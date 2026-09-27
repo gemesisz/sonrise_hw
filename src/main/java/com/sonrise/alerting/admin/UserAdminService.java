@@ -123,6 +123,20 @@ public class UserAdminService {
         return new ChannelLinkResponse(channel.getCode(), implementation.displayAddress(address), link.isEnabled());
     }
 
+    /**
+     * Turns a link on or off without touching the address (the admin page never has the real
+     * Slack webhook URL: responses mask it).
+     */
+    public ChannelLinkResponse setChannelEnabled(Long userId, String channelCode, boolean enabled) {
+        user(userId);
+        Channel channel = channel(channelCode);
+        UserChannel link = userChannels.findById(new UserChannelId(userId, channel.getId()))
+                .orElseThrow(() -> new NotFoundException("User " + userId + " has no " + channelCode + " channel"));
+        link.setEnabled(enabled);
+        return new ChannelLinkResponse(channel.getCode(),
+                channelRegistry.get(channel.getCode()).displayAddress(link.getAddress()), link.isEnabled());
+    }
+
     public void unlinkChannel(Long userId, String channelCode) {
         user(userId);
         UserChannelId id = new UserChannelId(userId, channel(channelCode).getId());

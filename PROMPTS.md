@@ -311,6 +311,23 @@ security config, repository queries, 22 new API/security tests. Validation appli
 - Verified the "generated password is logged" claim by running the real app.
 - Masked Slack webhook URLs in API responses (secret, D43).
 
+**Prompt 15:**
+> lets do the admin HTML page
+
+AI response: plain HTML/CSS/JS admin page (5 tabs) served behind the login; a second security
+chain so a strict CSP doesn't break the H2 console; a new PATCH endpoint; 4 new tests.
+Validation applied:
+- Designing the UI exposed an API gap: toggling a Slack link required re-sending the masked secret
+  URL → added a PATCH endpoint (D47).
+- Treated feed data as untrusted: `textContent` only, http(s)-only links, strict CSP; scanned the
+  code for HTML sinks (D46).
+- Drove the page in headless Brave via the DevTools protocol: 15 UI checks, screenshots of every
+  tab and a phone width, and an XSS probe that renders as text and never executes (D48).
+- The browser run found three real issues — Hungarian validation messages in an English UI,
+  unreadable nested email errors, a missing favicon — all fixed and re-verified (D49).
+- Two of its own script mistakes (zsh word splitting, stale CSRF header) were diagnosed rather
+  than blamed on the app.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

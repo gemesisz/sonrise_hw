@@ -19,6 +19,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserAdminApiTest extends AdminApiTestBase {
 
     @Autowired private CategoryRepository categories;
+    @Autowired private com.sonrise.alerting.repository.UserChannelRepository userChannels;
 
     @Test
     void createsUserWithLocationAndTrimmedName() throws Exception {
@@ -159,6 +161,28 @@ class UserAdminApiTest extends AdminApiTestBase {
                 .andReturn().getResponse().getContentAsString();
         assertThat(user).doesNotContain("SeCrEt");
         assertThat(JsonPath.<Boolean>read(user, "$.channels[0].enabled")).isFalse(); // EMAIL, sorted by code
+    }
+
+    @Test
+    void channelLinkCanBeToggledWithoutResendingTheSecretAddress() throws Exception {
+        long id = createUser("Alice");
+        String webhook = "https://hooks.slack.com/services/T0001/B0001/SeCrEtToKeN";
+        mvc.perform(json(put("/api/admin/users/" + id + "/channels/SLACK"), "{\"address\": \"" + webhook + "\"}"));
+
+        mvc.perform(json(patch("/api/admin/users/" + id + "/channels/SLACK"), """
+                        {"enabled": false}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false));
+
+        // The real (unmasked) address is untouched.
+        assertThat(userChannels.findAll()).singleElement()
+                .satisfies(link -> assertThat(link.getAddress()).isEqualTo(webhook));
+        mvc.perform(json(patch("/api/admin/users/" + id + "/channels/EMAIL"), """
+                        {"enabled": false}"""))
+                .andExpect(status().isNotFound());
+        mvc.perform(json(patch("/api/admin/users/" + id + "/channels/SLACK"), "{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.enabled").isNotEmpty());
     }
 
     @Test

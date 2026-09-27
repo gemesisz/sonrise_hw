@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Alerting admin</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="app.css">
+    <!-- No inline scripts or styles: the Content-Security-Policy only allows same-origin files. -->
+    <script src="app.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+    <h1>Alerting admin</h1>
+    <nav class="tabs" aria-label="Sections">
+        <button type="button" data-tab="users" aria-selected="true">Users</button>
+        <button type="button" data-tab="events">Events</button>
+        <button type="button" data-tab="notifications">Notifications</button>
+        <button type="button" data-tab="detection">Detection</button>
+        <button type="button" data-tab="channels">Channels</button>
+    </nav>
+</header>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<main>
+    <!-- Users -->
+    <section id="tab-users" class="tab">
+        <form id="create-user" class="card inline-form" novalidate>
+            <label>New user <input name="name" maxlength="100" placeholder="Name" required></label>
+            <button type="submit">Add user</button>
+            <span class="field-error" data-for="name"></span>
+        </form>
+        <div id="user-list"></div>
+    </section>
+
+    <!-- Events -->
+    <section id="tab-events" class="tab" hidden>
+        <form id="event-filters" class="card inline-form">
+            <label>Category <select name="category"><option value="">Any</option></select></label>
+            <label>Source <select name="source"><option value="">Any</option></select></label>
+            <label>Min severity
+                <select name="minSeverity">
+                    <option value="">Any</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+                </select>
+            </label>
+            <button type="submit">Filter</button>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Detected</th><th>Severity</th><th>Category</th><th>Source</th><th>Title</th><th>Occurred</th></tr></thead>
+                <tbody id="event-rows"></tbody>
+            </table>
+        </div>
+        <div class="pager" id="event-pager"></div>
+    </section>
+
+    <!-- Notifications -->
+    <section id="tab-notifications" class="tab" hidden>
+        <form id="notification-filters" class="card inline-form">
+            <label>Status
+                <select name="status">
+                    <option value="">Any</option><option>PENDING</option><option>SENT</option><option>FAILED</option><option>FAILED_PERMANENTLY</option>
+                </select>
+            </label>
+            <button type="submit">Filter</button>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Created</th><th>Status</th><th>User</th><th>Channel</th><th>Event</th><th>Attempts</th><th>Next attempt</th><th>Last error</th><th></th></tr></thead>
+                <tbody id="notification-rows"></tbody>
+            </table>
+        </div>
+        <div class="pager" id="notification-pager"></div>
+    </section>
+
+    <!-- Detection -->
+    <section id="tab-detection" class="tab" hidden>
+        <div class="card">
+            <div class="card-head">
+                <h2>Sources</h2>
+                <button type="button" id="run-now">Run all enabled sources now</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Source</th><th>Enabled</th><th>Interval</th><th>Last started</th><th>Last manual run</th></tr></thead>
+                    <tbody id="source-rows"></tbody>
+                </table>
+            </div>
+            <p class="hint">Sources are enabled and scheduled in <code>application.yml</code> (<code>alerting.sources.*</code>).</p>
+        </div>
+
+        <form id="fake-event" class="card stacked-form" novalidate>
+            <h2>Send a test event</h2>
+            <p class="hint">Goes through the real pipeline (fake source → store → subscribers → channels) and is delivered like any detected event.</p>
+            <label>Category <select name="category" required></select></label>
+            <label>Severity
+                <select name="severity" required>
+                    <option>LOW</option><option>MEDIUM</option><option selected>HIGH</option><option>CRITICAL</option>
+                </select>
+            </label>
+            <label>Title <input name="title" maxlength="500" required placeholder="e.g. Demo: Bitcoin down 25% in 24h"></label>
+            <span class="field-error" data-for="title"></span>
+            <label>Description <textarea name="description" maxlength="4000" rows="3"></textarea></label>
+            <button type="submit">Send test event</button>
+        </form>
+    </section>
+
+    <!-- Channels -->
+    <section id="tab-channels" class="tab" hidden>
+        <div class="card">
+            <h2>Channels</h2>
+            <p class="hint">A disabled channel delivers nothing to anyone (e.g. during a Slack outage). Users keep their links.</p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Channel</th><th>Code</th><th>Enabled</th></tr></thead>
+                    <tbody id="channel-rows"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

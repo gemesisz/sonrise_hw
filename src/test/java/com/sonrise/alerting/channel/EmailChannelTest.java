@@ -89,6 +89,19 @@ class EmailChannelTest {
     }
 
     @Test
+    void reportsOnlyTheMostSpecificCauseNotTheWholeChain() {
+        // Real-world shape (seen in a browser run): Spring Mail nests the whole chain into the message.
+        var cause = new java.net.ConnectException("Connection refused");
+        doThrow(new MailSendException("Mail server connection failed. Failed messages: "
+                + "org.eclipse.angus.mail.util.MailConnectException: Couldn't connect to host", cause))
+                .when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertThatThrownBy(() -> channel.send("alice@example.com", TestEvents.earthquake()))
+                .isInstanceOf(NotificationDeliveryException.class)
+                .hasMessage("Email to alice@example.com failed: Connection refused");
+    }
+
+    @Test
     void wrapsMailFailureInDeliveryException() {
         doThrow(new MailSendException("Connection refused")).when(mailSender).send(any(SimpleMailMessage.class));
 

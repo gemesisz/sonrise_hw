@@ -15,6 +15,11 @@ spring:
   h2:
     console:
       enabled: true
+  # The admin page is English: validation messages must not follow the server's or browser's
+  # locale (found in a browser run: messages came back in Hungarian).
+  web:
+    locale: en
+    locale-resolver: fixed
   # The single admin user (HTTP basic). Password: set SPRING_SECURITY_USER_PASSWORD, otherwise
   # Spring Boot generates a random one and prints it in the startup log.
   security:
