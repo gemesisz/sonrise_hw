@@ -161,6 +161,25 @@ AI response: dropped the repositories from phase 1; agreed to move persistence
 tests to when repositories exist, but flagged that the CHECK-constraint bug
 must be fixed regardless.
 
+**Prompt 6:**
+> next step: create repositories and create the Channels with strategy pattern,
+> create an interface with code(), validateAddress(address) and send(address,
+> event), and implement Email and Slack channels. Also create a registry that
+> finds the channel by channel.code
+
+AI response: 7 repositories (only `findByCode` finders on category/channel),
+`NotificationChannel` + `EmailChannel` + `SlackChannel` + `NotificationChannelRegistry`,
+config, and 34 new tests (Mockito for email, `MockRestServiceServer` for Slack).
+Validation applied:
+- Checked `mvn dependency:tree` before coding: Boot 4 needs separate starters for mail
+  and REST client (D25). Read the real timeout property names from the jar metadata;
+  the older `spring.http.client.*` is deprecated.
+- All tests passed first time → ran a mutation check on email validation. One guard
+  (`contains("@")`) turned out to be dead code — removed (D23).
+- Slack tests assert the secret webhook URL never appears in error messages (D24).
+- Flagged, not yet fixed: timeouts not proven to reach the RestClient (D24); lazy
+  `event.category` could fail outside a transaction (D26).
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

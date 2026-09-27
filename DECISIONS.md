@@ -181,3 +181,51 @@ Format: **context → decision → alternatives considered → why.**
   is what exposed the D20 bug — evidence that the schema needs insert-level tests, not
   just startup validation. It is kept as a safety net until phase 2, then rewritten
   against the repositories.
+
+## Phase 2 — Business logic
+
+### D22 — Channel strategy contract
+- **Decision (mine):** `NotificationChannel` with `code()`, `validateAddress(address)`,
+  `send(address, event)`; `EmailChannel`, `SlackChannel`; a `NotificationChannelRegistry`
+  that finds the implementation by `channel.code`.
+- **Details (AI, reviewed):**
+  - `validateAddress` throws `InvalidAddressException` with a reason instead of returning a
+    boolean, so the admin API can later show *why* an address was rejected.
+  - `send` wraps every channel-specific failure (`MailException`, `RestClientException`) in
+    `NotificationDeliveryException`, so the dispatcher/retry logic handles all channels the same way.
+  - The registry fails at startup if two beans claim the same code; lookup is exact (`email` ≠ `EMAIL`).
+- **Deferred:** the startup check that every `channel` row has an implementation (and vice versa).
+
+### D23 — Email: SMTP via Spring Mail, local mail catcher by default
+- `spring.mail.host/port` default to `localhost:1025` (Mailpit/MailHog), overridable by env vars.
+  Spring Boot only creates the `JavaMailSender` when `spring.mail.host` is set, so it has to
+  be configured even for tests. Sender address from `alerting.channels.email.from`.
+- Address validation: strict `InternetAddress` parsing **plus** a check that the parsed address
+  equals the input — strict parsing alone accepts `"Alice <alice@example.com>"`.
+- **Rejected AI output:** the first version also required `address.contains("@")`. A mutation
+  check (removing each guard and re-running the tests) showed no test failed without it —
+  strict parsing already rejects `"alice"`. Removed as dead code. The other guard *was*
+  caught by a test, so it stays.
+
+### D24 — Slack: incoming webhooks, URL is a secret
+- Address = incoming webhook URL; validation requires `https`, host exactly `hooks.slack.com`
+  (so `hooks.slack.com.evil.example.com` fails) and a `/services/` path.
+- Error messages never include the webhook URL (anyone holding it can post to the channel);
+  a test asserts this.
+- HTTP timeouts (`spring.http.clients.connect-timeout: 5s`, `read-timeout: 10s`) so a slow
+  Slack can't hang a sender thread. Property names checked in the jar's configuration
+  metadata: the `spring.http.client.*` form the AI might reach for is deprecated since Boot 4.0.
+- **Not yet verified:** that these timeouts actually reach the `RestClient` built from Boot's
+  builder — to be covered by the end-to-end test (step 6).
+
+### D25 — Boot 4 starters for mail and REST client
+- Neither `JavaMailSender` nor `RestClient.Builder` auto-configuration comes with the web
+  starter in Boot 4; checked with `mvn dependency:tree` and added `spring-boot-starter-mail`
+  and `spring-boot-starter-restclient`.
+
+### D26 — Known risk: lazy `event.category` in channel messages
+- Both channels print `event.getCategory().getName()`. `category` is a lazy association and
+  `open-in-view` is off, so calling `send` outside a transaction on a freshly loaded event
+  would throw `LazyInitializationException`. Unit tests don't hit this (they build events in
+  memory). To handle in the dispatcher (step 4): load events with their category, and cover
+  it in the end-to-end test.
