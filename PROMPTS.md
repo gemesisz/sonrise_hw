@@ -208,6 +208,30 @@ sources, config, 47 new tests. Validation applied:
 - Mutation check: removing the XXE protection makes the XXE test fail (D29).
 - Not done: a live run of the real sources — no scheduler/trigger exists yet (D31).
 
+**Prompt 8:**
+> now do the Observers:
+>
+> Dispatcher (Observer)
+> - Saving a new event publishes EventDetected, but only after the database transaction
+>   commits, so we never notify about an event that failed to save.
+> - The dispatcher finds the category's subscribers whose minimum severity the event meets,
+>   creates one notification row per subscriber × enabled channel, and sends each one.
+> - One failed channel doesn't stop the others.
+
+(Step 3, the scheduler, skipped for now — the fake source's `detect()` drives the tests.)
+
+AI response: `EventDetected`, publishing from `EventStore`, `NotificationDispatcher`
+(AFTER_COMMIT listener, three short transactions), subscriber query, and an integration test
+running the real flow with real commits (only channels mocked). Validation applied:
+- All 7 new tests failed at first → real bug: the listener's transaction template joined the
+  already-committed transaction, so nothing was saved. The AI had earlier claimed its
+  approach "sidesteps" Spring's REQUIRES_NEW rule — wrong; fixed with REQUIRES_NEW (D33).
+- One remaining failure was a bug in the AI's own test setup, fixed in the test (D34).
+- Noticed a test that never reached the code path its name claimed; rewrote it. Mutation
+  check then showed Spring already swallows AFTER_COMMIT listener exceptions — the AI's
+  assumption was wrong; corrected the code comment (D34).
+- Closed D26 (lazy category) with a test that reads the category outside a transaction.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

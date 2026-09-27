@@ -2,8 +2,10 @@ package com.sonrise.alerting.source;
 
 import com.sonrise.alerting.domain.Category;
 import com.sonrise.alerting.domain.Event;
+import com.sonrise.alerting.notification.EventDetected;
 import com.sonrise.alerting.repository.CategoryRepository;
 import com.sonrise.alerting.repository.EventRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +27,14 @@ public class EventStore {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public EventStore(EventRepository eventRepository, CategoryRepository categoryRepository, Clock clock) {
+    public EventStore(EventRepository eventRepository, CategoryRepository categoryRepository, Clock clock,
+                      ApplicationEventPublisher eventPublisher) {
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.clock = clock;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -48,7 +53,7 @@ public class EventStore {
         Category category = categoryRepository.findByCode(candidate.categoryCode())
                 .orElseThrow(() -> new RejectedCandidateException("Unknown category " + candidate.categoryCode()));
 
-        eventRepository.save(new Event(
+        Event event = eventRepository.save(new Event(
                 category,
                 source,
                 candidate.externalId(),
@@ -59,6 +64,9 @@ public class EventStore {
                 candidate.severity(),
                 candidate.occurredAt(),
                 clock.instant()));
+        // Observer: listeners are called only after this transaction commits
+        // (@TransactionalEventListener), so nobody is notified of an event that failed to save.
+        eventPublisher.publishEvent(new EventDetected(event.getId()));
         return true;
     }
 

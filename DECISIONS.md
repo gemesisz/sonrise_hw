@@ -283,3 +283,47 @@ Format: **context → decision → alternatives considered → why.**
   RSS date fallback), so tests use a fixed clock.
 - **Not done:** no live end-to-end run of the real sources yet (there is no scheduler or
   trigger to run them) — to be done in step 3.
+
+### D32 — Observer: publish after commit, dispatch in three short transactions
+- **Decision:** `EventStore` publishes `EventDetected(eventId)` inside its transaction;
+  `NotificationDispatcher` listens with `@TransactionalEventListener(AFTER_COMMIT)`, so an
+  event that failed to save is never notified. The payload is only the id; the dispatcher
+  loads what it needs itself.
+- The dispatcher uses three kinds of short transactions: (1) create all PENDING notification
+  rows, (2) send each with **no** transaction open (network calls), (3) record each outcome in
+  its own transaction. A crash leaves PENDING/FAILED rows, never a rolled-back batch of
+  messages that were actually sent.
+- Subscriber matching is one query: enabled channel links, on enabled channels, of users
+  subscribed to the category with `min_severity IN (event severity and below)`. Severities are
+  stored as text, so "≤" can't be done in SQL; `Severity.andBelow()` builds the list in Java.
+- One failed channel → that notification is FAILED with `attempts = 1` and the error; the loop
+  continues. `next_attempt_at` is left for the retry step (5).
+- **Resolves D26:** events are loaded with `join fetch category`; a test makes the mocked
+  channel read `event.getCategory().getName()` outside any transaction.
+- **Sending is synchronous** in the detecting thread (simplest, deterministic in tests). A slow
+  channel slows detection; bounded by the HTTP timeouts (D24). Async is a possible later change.
+
+### D33 — Bug caught by the tests: AFTER_COMMIT listener joined the finished transaction
+- **Symptom:** all 7 dispatcher tests failed; logs showed `Notification null` and nothing was
+  ever committed.
+- **Cause:** during `AFTER_COMMIT`, the committed transaction's resources are still bound to
+  the thread. The dispatcher's `TransactionTemplate` used the default `REQUIRED` propagation,
+  so it silently *joined* that finished transaction — writes were never committed.
+- **AI's earlier wrong reasoning:** Spring rejects plain `@Transactional` on transactional
+  event listeners (it requires `REQUIRES_NEW`). The AI chose a programmatic `TransactionTemplate`
+  claiming this "sidesteps the restriction" — it only sidestepped the safety check and walked
+  straight into the bug the restriction exists to prevent.
+- **Fix:** the template uses `PROPAGATION_REQUIRES_NEW`, with a comment explaining why.
+
+### D34 — Tests that didn't test what they claimed
+- A second dispatcher test failure was a **test bug**: it disabled a detached entity and then
+  saved freshly loaded copies (`saveAll(findAll())`), so the change was lost. Fixed the test,
+  not the code.
+- `unexpectedErrorInDispatchDoesNotBreakDetection` threw from the channel registry — an
+  error already caught per delivery — so it never exercised the listener-level catch its name
+  claimed. Split into two tests; the new one makes subscriber lookup crash.
+- **Mutation check on the listener-level catch:** removing it did *not* fail the test —
+  Spring itself catches and logs exceptions from AFTER_COMMIT listeners. The AI's assumption
+  that they would propagate into the detection loop was wrong. The catch stays (it logs which
+  event failed) with a corrected comment; the test stays because it guards the behaviour that
+  matters, whichever layer provides it.

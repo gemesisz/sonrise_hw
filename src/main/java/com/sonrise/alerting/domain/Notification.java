@@ -129,4 +129,27 @@ public class Notification {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    /**
+     * Records a successful delivery attempt.
+     */
+    public void markSent(Instant now) {
+        attempts++;
+        status = NotificationStatus.SENT;
+        sentAt = now;
+        lastError = null;
+        nextAttemptAt = null;
+    }
+
+    /**
+     * Records a failed delivery attempt. When (and whether) to retry is decided by the retry logic.
+     */
+    public void markFailed(String error) {
+        attempts++;
+        status = NotificationStatus.FAILED;
+        lastError = error == null || error.length() <= MAX_ERROR ? error : error.substring(0, MAX_ERROR);
+    }
+
+    // Must match notification.last_error in 007-create-notification.yaml.
+    private static final int MAX_ERROR = 2000;
 }
