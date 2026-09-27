@@ -229,3 +229,57 @@ Format: **context → decision → alternatives considered → why.**
   would throw `LazyInitializationException`. Unit tests don't hit this (they build events in
   memory). To handle in the dispatcher (step 4): load events with their category, and cover
   it in the end-to-end test.
+
+### D27 — Event source template: what the base class owns
+- **Decision:** `AbstractEventSource<T>.detect()` is `final` and fixes fetch → parse →
+  (per candidate) skip duplicates → save. Subclasses implement only `fetch()` and `parse(T)`;
+  `T` is the raw payload (a response body, or the fake source's queue contents).
+  Code and enabled flag are passed to the constructor, not extra abstract methods.
+- `parse` returns `EventCandidate`s carrying category and severity, so severity mapping
+  stays with the source that understands its data.
+- Fetch or parse failure → `EventSourceException`, nothing stored. A single bad candidate
+  (unknown category, id too long) → counted as rejected, the rest of the run continues.
+- `EventStore.saveIfNew` runs each candidate in its own transaction. Over-long title /
+  description are truncated; an over-long URL is dropped (a cut URL is a broken link);
+  an over-long external id is **rejected**, because truncating could merge two events.
+- **Known limit:** dedup is check-then-insert. Two *concurrent* runs of the same source could
+  race; the unique constraint would then fail one insert. The step 3 overlap guard prevents
+  concurrent runs.
+
+### D28 — Real sources, checked against live responses before coding
+- Fetched all three live feeds first; the test fixtures are trimmed **real** responses
+  (captured 2026-09-27), not AI-written samples.
+- **USGS** (`2.5_day.geojson`): severity by magnitude — <5 LOW, 5–6 MEDIUM, 6–7 HIGH, ≥7 CRITICAL.
+  PAGER `alert` was considered but is usually `null`. Checking the weekly feed showed it also
+  contains **quarry blasts, explosions, mining explosions, ice quakes** (42 in one week) —
+  these are filtered out (`type == "earthquake"`); the fixture includes a real quarry blast.
+- **RSS** (BBC World): default severity MEDIUM, HIGH if the title contains a configured keyword.
+  `guid` as id (falls back to `link`); unparseable `pubDate` falls back to detection time.
+- **CoinGecko** (`/simple/price`, no key): event when |24h change| ≥ 3% —
+  3–5 LOW, 5–10 MEDIUM, 10–20 HIGH, ≥20 CRITICAL. The API is stateless, so the external id is
+  `coin:UTC-day:direction:severity` — one event per coin/direction/level per day, a new one if
+  the move escalates. The live sample had only <1% moves → correctly produces no events.
+- Boot 4 ships **Jackson 3** (`tools.jackson.*`), not Jackson 2 — APIs like `asText()` are now
+  `asString()`. Checked with `mvn dependency:tree`.
+
+### D29 — RSS parsed with the JDK XML parser, hardened against XXE
+- **Decision (mine):** JDK DOM parser, no new dependency (Rome considered).
+- Feeds are untrusted input: DOCTYPE declarations are rejected outright. A test feeds an
+  XXE payload; a mutation check (removing the DOCTYPE ban) made that test fail, so it really
+  guards the setting.
+
+### D30 — Rejected AI output: substring keyword matching
+- **Context:** the first RSS version matched keywords with `title.contains(keyword)` —
+  `war` matched "**war**m", "a**war**d", "**war**ning", "**War**saw"; `dead` matched "**dead**line".
+  The AI even wrote a test asserting `"Warm weather ahead"` → HIGH as "expected", documenting
+  the bug instead of fixing it.
+- **Decision:** whole-word, case-insensitive regex; a trailing `*` in config makes a deliberate
+  prefix (`evacuat*` → "evacuated", "evacuation"). Tests cover the false positives.
+
+### D31 — Enabling sources; injectable clock
+- Each source reads `alerting.sources.<name>.enabled`; the bean always exists and exposes
+  `isEnabled()`, so the scheduler (step 3) can skip it and the admin view can still list it.
+- A `Clock` bean is injected wherever "now" matters (detection time, CoinGecko day bucket,
+  RSS date fallback), so tests use a fixed clock.
+- **Not done:** no live end-to-end run of the real sources yet (there is no scheduler or
+  trigger to run them) — to be done in step 3.

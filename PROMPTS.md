@@ -180,6 +180,34 @@ Validation applied:
 - Flagged, not yet fixed: timeouts not proven to reach the RestClient (D24); lazy
   `event.category` could fail outside a transaction (D26).
 
+**Prompt 7:**
+> next step:
+>
+> *(pasted the plan text for steps 2–4; the paste was garbled after step 2)*
+>
+> Event sources (Template Method)
+> - AbstractEventSource holds the fixed sequence: fetch → parse → map to our Event
+>   with a severity → skip duplicates → save. Each source only implements fetch and parse.
+> - FakeEventSource first, then the real sources: UsgsEarthquakeSource (severity from
+>   magnitude), RssNewsSource and CoinGeckoMarketSource. Each one can be switched on or
+>   off in config.
+> - Tests: parse saved sample responses from each real feed, so tests never call the
+>   internet, and check the severity mapping.
+
+AI asked before building (the paste was ambiguous); my answers: **step 2 only**, and
+**JDK XML parser** for RSS (no new dependency).
+
+AI response: `AbstractEventSource` template, `EventStore`, fake + USGS + RSS + CoinGecko
+sources, config, 47 new tests. Validation applied:
+- Fetched the three live feeds *before* writing parsers; fixtures are trimmed real
+  responses. Checking the live USGS weekly feed revealed quarry blasts/explosions mixed in
+  with earthquakes → filtered, with a real quarry blast in the fixture (D28).
+- Found Boot 4 uses Jackson 3 (`tools.jackson`), not Jackson 2 (D28).
+- Rejected own output: substring keyword matching (`war` matched "warm") — and a test that
+  asserted that bug as expected behaviour. Replaced with whole-word matching (D30).
+- Mutation check: removing the XXE protection makes the XXE test fail (D29).
+- Not done: a live run of the real sources — no scheduler/trigger exists yet (D31).
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

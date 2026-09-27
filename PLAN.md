@@ -86,7 +86,7 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
 1. Channel strategies ✅: `NotificationChannel` interface, `EmailChannel`, `SlackChannel`,
    a registry keyed by channel code, and a per-channel address validator.
    Startup check: every `channel` row has a strategy bean and vice versa (pending).
-2. Event sources: `AbstractEventSource` (Template Method) + `FakeEventSource`, then
+2. Event sources ✅: `AbstractEventSource` (Template Method) + `FakeEventSource`, then
    `UsgsEarthquakeSource`, `RssNewsSource`, `CoinGeckoMarketSource`; each can be
    enabled/disabled and given its own interval in config.
 3. Detection scheduler + dedupe on `(source, external_id)`; guarded against a

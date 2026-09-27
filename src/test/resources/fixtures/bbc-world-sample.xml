@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+        <title><![CDATA[BBC News]]></title>
+        <description><![CDATA[BBC News - World]]></description>
+        <link>https://www.bbc.co.uk/news/world</link>
+        <image>
+            <url>https://news.bbcimg.co.uk/nol/shared/img/bbc_news_120x60.gif</url>
+            <title>BBC News</title>
+            <link>https://www.bbc.co.uk/news/world</link>
+        </image>
+        <generator>RSS for Node</generator>
+        <lastBuildDate>Sun, 27 Sep 2026 06:13:16 GMT</lastBuildDate>
+        <atom:link href="https://feeds.bbci.co.uk/news/world/rss.xml" rel="self" type="application/rss+xml"/>
+        <copyright><![CDATA[Copyright: (C) British Broadcasting Corporation, see https://www.bbc.co.uk/usingthebbc/terms-of-use/#15metadataandrssfeeds for terms and conditions of reuse.]]></copyright>
+        <language><![CDATA[en-gb]]></language>
+        <ttl>15</ttl>
+        <item>
+            <title><![CDATA[Iran says it will wait for official US response after Trump rejects Strait of Hormuz proposal]]></title>
+            <description><![CDATA[The US president earlier said that Tehran only made the proposal to open the strait within seven days because "they're losing so badly".]]></description>
+            <link>https://www.bbc.co.uk/news/articles/cmvgyyw2jeego?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/cmvgyyw2jeego#0</guid>
+            <pubDate>Sun, 27 Sep 2026 02:16:52 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/c2f6/live/86e0e040-ba15-11f1-851b-7de4b36a82e3.jpg"/>
+        </item>
+<item>
+            <title><![CDATA[Christa Pike to be first woman executed in Tennessee in 200 years - but her defence say she's a victim too]]></title>
+            <description><![CDATA[Lawyers for Pike, who killed a fellow student in 1995, say she should get clemency and would not be sentenced to death if the crime happened today.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c6pwl9g9ne1lo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c6pwl9g9ne1lo#0</guid>
+            <pubDate>Sat, 26 Sep 2026 23:04:08 GMT</pubDate>
+            <media:thumbnail width="240" height="135" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/6c63/live/9ec92970-b8de-11f1-b1d1-571ed4d7ff2c.jpg"/>
+        </item>
+<item>
+            <title><![CDATA[Four killed in helicopter crash near Montreal]]></title>
+            <description><![CDATA[The victims of the crash have not yet been identified, Quebec provincial police told the BBC.]]></description>
+            <link>https://www.bbc.co.uk/news/articles/c3grvv7p81lqo?at_medium=RSS&amp;at_campaign=rss</link>
+            <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/c3grvv7p81lqo#0</guid>
+            <pubDate>Sun, 27 Sep 2026 02:43:10 GMT</pubDate>
+            <media:thumbnail width="240" height="134" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/d390/live/1c1bd500-ba1d-11f1-9108-e745779fe632.jpg"/>
+        </item>
+    </channel>
+</rss>

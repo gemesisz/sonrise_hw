@@ -15,3 +15,34 @@ spring:
   h2:
     console:
       enabled: true
+  # SMTP server for the EMAIL channel. Defaults to a local mail catcher (e.g. Mailpit/MailHog on 1025).
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  # Outgoing HTTP calls (Slack webhooks): never let a slow endpoint hang a sender thread.
+  http:
+    clients:
+      connect-timeout: 5s
+      read-timeout: 10s
+
+alerting:
+  channels:
+    email:
+      from: ${ALERTING_EMAIL_FROM:alerts@alerting.local}
+  sources:
+    fake:
+      enabled: true
+    usgs:
+      enabled: true
+      # All earthquakes M2.5+ from the past day; dedup makes re-reading the same window harmless.
+      url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson
+    rss:
+      enabled: true
+      url: https://feeds.bbci.co.uk/news/world/rss.xml
+      default-severity: MEDIUM
+      # Whole words, case-insensitive; a trailing * matches a prefix (evacuat* -> evacuation).
+      high-severity-keywords: breaking, killed, dead, war, attack*, explosion*, earthquake*, tsunami*, evacuat*
+    coingecko:
+      enabled: true
+      url: https://api.coingecko.com/api/v3/simple/price
+      coins: bitcoin, ethereum, solana
