@@ -142,12 +142,28 @@ public class Notification {
     }
 
     /**
-     * Records a failed delivery attempt. When (and whether) to retry is decided by the retry logic.
+     * Records a failed delivery attempt.
+     *
+     * @param nextAttemptAt when to try again, or {@code null} to give up (FAILED_PERMANENTLY)
      */
-    public void markFailed(String error) {
+    public void markFailed(String error, Instant nextAttemptAt) {
         attempts++;
-        status = NotificationStatus.FAILED;
-        lastError = error == null || error.length() <= MAX_ERROR ? error : error.substring(0, MAX_ERROR);
+        lastError = truncateError(error);
+        this.nextAttemptAt = nextAttemptAt;
+        status = nextAttemptAt == null ? NotificationStatus.FAILED_PERMANENTLY : NotificationStatus.FAILED;
+    }
+
+    /**
+     * Gives up without another attempt, e.g. because the user's channel link was removed.
+     */
+    public void abandon(String reason) {
+        lastError = truncateError(reason);
+        nextAttemptAt = null;
+        status = NotificationStatus.FAILED_PERMANENTLY;
+    }
+
+    private static String truncateError(String error) {
+        return error == null || error.length() <= MAX_ERROR ? error : error.substring(0, MAX_ERROR);
     }
 
     // Must match notification.last_error in 007-create-notification.yaml.

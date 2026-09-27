@@ -1,6 +1,5 @@
 package com.sonrise.alerting.notification;
 
-import com.sonrise.alerting.channel.NotificationChannelRegistry;
 import com.sonrise.alerting.domain.Event;
 import com.sonrise.alerting.domain.Notification;
 import com.sonrise.alerting.domain.UserChannel;
@@ -24,9 +23,9 @@ import java.util.List;
 /**
  * Observer of {@link EventDetected}: fans a new event out to its category's subscribers.
  *
- * <p>Three short transactions instead of one long one: (1) create all notification rows as
- * PENDING, (2) send each one with no transaction open (network calls), (3) record each
- * outcome separately. A crash mid-way leaves PENDING/FAILED rows behind, never a message
+ * <p>Short transactions instead of one long one: (1) create all notification rows as
+ * PENDING, then per notification {@link NotificationSender} (2) sends with no transaction open
+ * (network calls) and (3) records the outcome, scheduling a retry on failure. A crash mid-way leaves PENDING/FAILED rows behind, never a message
  * that was sent but not recorded as a whole batch rolled back.
  */
 @Component
@@ -37,7 +36,7 @@ public class NotificationDispatcher {
     private final EventRepository eventRepository;
     private final UserChannelRepository userChannelRepository;
     private final NotificationRepository notificationRepository;
-    private final NotificationChannelRegistry channelRegistry;
+    private final NotificationSender sender;
     private final TransactionTemplate transactions;
     private final Clock clock;
     private final Duration maxEventAge;
@@ -45,14 +44,14 @@ public class NotificationDispatcher {
     public NotificationDispatcher(EventRepository eventRepository,
                                   UserChannelRepository userChannelRepository,
                                   NotificationRepository notificationRepository,
-                                  NotificationChannelRegistry channelRegistry,
+                                  NotificationSender sender,
                                   PlatformTransactionManager transactionManager,
                                   Clock clock,
                                   @Value("${alerting.notification.max-event-age}") Duration maxEventAge) {
         this.eventRepository = eventRepository;
         this.userChannelRepository = userChannelRepository;
         this.notificationRepository = notificationRepository;
-        this.channelRegistry = channelRegistry;
+        this.sender = sender;
         this.transactions = new TransactionTemplate(transactionManager);
         // REQUIRES_NEW is essential: an AFTER_COMMIT listener still sees the committed
         // transaction bound to the thread, and a default (REQUIRED) template would silently
@@ -77,7 +76,8 @@ public class NotificationDispatcher {
     void dispatch(Long eventId) {
         List<Delivery> deliveries = transactions.execute(status -> createNotifications(eventId));
         log.info("Event {}: {} notification(s) to send", eventId, deliveries.size());
-        deliveries.forEach(this::deliver);
+        // One failed channel must not stop the others: the sender records failures, never throws.
+        deliveries.forEach(d -> sender.send(d.notificationId(), d.channelCode(), d.address(), d.event()));
     }
 
     private List<Delivery> createNotifications(Long eventId) {
@@ -98,26 +98,6 @@ public class NotificationDispatcher {
                         target.getAddress(),
                         event))
                 .toList();
-    }
-
-    private void deliver(Delivery delivery) {
-        String error = null;
-        try {
-            channelRegistry.get(delivery.channelCode()).send(delivery.address(), delivery.event());
-        } catch (RuntimeException e) {
-            // One failed channel must not stop the others: record it and move on.
-            error = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
-            log.warn("Notification {} via {} failed: {}", delivery.notificationId(), delivery.channelCode(), error);
-        }
-        String failure = error;
-        transactions.executeWithoutResult(status -> {
-            Notification notification = notificationRepository.findById(delivery.notificationId()).orElseThrow();
-            if (failure == null) {
-                notification.markSent(clock.instant());
-            } else {
-                notification.markFailed(failure);
-            }
-        });
     }
 
     /**

@@ -257,6 +257,19 @@ notified). Validation: mutation check (rule removed → test fails); live run he
 first-run events. Noted the side effect: a source interval longer than 10 minutes would miss
 events (D38).
 
+**Prompt 11:**
+> okay, do the retry
+
+AI response: `RetryPolicy` (4 attempts, 1m/5m/15m), `NotificationRetryJob`, shared
+`NotificationSender` (moved out of the dispatcher), due-query, config, 10 new tests.
+Validation applied:
+- Corrected its own earlier suggestion (3 delays but "3 attempts" was inconsistent) and
+  documented the counting rule (D39).
+- Integration tests use a controllable clock to check exact due times and backoff.
+- Removed an always-true assertion from its own test and fixed the test's misleading name.
+- Mutation check: off-by-one in the attempt limit fails both unit and integration tests.
+- Listed known gaps instead of hiding them: stuck PENDING rows, multi-instance double sends.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

@@ -33,6 +33,13 @@ alerting:
     # Events older than this when detected are stored but not notified (no burst of old news
     # on the first run after a restart).
     max-event-age: 10m
+    retry:
+      # Every attempt counts, the first send included: 1 send + 3 retries.
+      max-attempts: 4
+      # Wait before retry 1, 2, 3 (the last delay repeats if max-attempts needs more).
+      backoff: 1m, 5m, 15m
+      tick: 30s
+      batch-size: 100
   detection:
     # How often the scheduler checks which sources are due; each source has its own interval.
     tick: 15s

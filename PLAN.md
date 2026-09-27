@@ -93,7 +93,7 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
    scheduled run and a manual trigger overlapping.
 4. Dispatcher (Observer) ✅: listens for `EventDetected`, matches subscriptions by
    category and minimum severity, creates `notification` rows, sends them.
-5. Retry job: backoff, max attempts from config, then `FAILED_PERMANENTLY`.
+5. Retry job ✅: backoff, max attempts from config, then `FAILED_PERMANENTLY`.
 - Validation: Mockito unit tests for matching, severity mapping, retry rules;
   an end-to-end integration test (fake source → dispatcher → email via GreenMail,
   Slack via a mock HTTP server).

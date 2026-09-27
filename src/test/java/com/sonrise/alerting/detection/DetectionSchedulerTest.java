@@ -3,13 +3,11 @@ package com.sonrise.alerting.detection;
 import com.sonrise.alerting.source.AbstractEventSource;
 import com.sonrise.alerting.source.DetectionResult;
 import com.sonrise.alerting.source.EventSourceException;
+import com.sonrise.alerting.testsupport.MutableClock;
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -119,33 +117,5 @@ class DetectionSchedulerTest {
         when(source.interval()).thenReturn(interval);
         when(source.detect()).thenReturn(new DetectionResult(code, 0, 0, 0, 0));
         return source;
-    }
-
-    private static final class MutableClock extends Clock {
-
-        private Instant now;
-
-        MutableClock(Instant now) {
-            this.now = now;
-        }
-
-        void advance(Duration duration) {
-            now = now.plus(duration);
-        }
-
-        @Override
-        public Instant instant() {
-            return now;
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ZoneOffset.UTC;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            throw new UnsupportedOperationException();
-        }
     }
 }

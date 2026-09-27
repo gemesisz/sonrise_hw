@@ -379,3 +379,30 @@ Format: **context → decision → alternatives considered → why.**
   caught in time, but a longer interval must stay below this limit.
 - **Verified:** tests for 11 min (stored, not notified) and 9 min (notified); mutation check
   (rule removed) fails the test; live run held back all 73 first-run events.
+
+### D39 — Retry: 4 attempts, backoff 1m / 5m / 15m, then FAILED_PERMANENTLY
+- **Decision:** `alerting.notification.retry.max-attempts: 4` counts every attempt, the first send
+  included (1 send + 3 retries); `backoff: 1m, 5m, 15m` is the wait before retry 1, 2, 3 (the last
+  delay repeats if max-attempts is raised). Invalid config (0 attempts, retries without delays)
+  stops startup.
+- **AI self-correction:** the AI had earlier suggested "delays 1, 5, 15 min and 3 attempts" —
+  three delays imply four attempts. Made the numbers consistent and documented the counting rule.
+- A failure sets `next_attempt_at = now + delay`; at the limit the status becomes
+  `FAILED_PERMANENTLY` and `next_attempt_at` is cleared.
+- `NotificationRetryJob` (tick 30s, batch 100, oldest due first) re-sends FAILED notifications
+  that are due. It uses the user's **current** channel link: a corrected address is picked up; a
+  removed or disabled link (or disabled channel) ends the retries without sending
+  (`abandon`, no attempt counted).
+- Retries ignore the 10-minute event age (D38): that rule decides whether to notify at all;
+  once a notification exists, it is delivered.
+- **Refactor:** "send, then record the outcome" moved from the dispatcher into a shared
+  `NotificationSender` (keeps `REQUIRES_NEW`, see D33), used by both first delivery and retries.
+- **Known gaps:** a crash between creating a notification and sending it leaves it PENDING
+  forever (D32) — the retry job only picks FAILED rows; and with more than one app instance,
+  two retry jobs could send the same notification (no row claiming). Both acceptable for a
+  single-instance take-home. A manual "retry now" comes with the admin API.
+- **Verified:** integration tests with a controllable clock (not due at 59s, due at 60s; growing
+  backoff; give-up after 4; corrected address used; disabled link abandons); mutation check
+  (off-by-one in the attempt limit) fails both unit and integration tests.
+- **Rejected AI output:** a test ended with `verify(email, never()).send(eq("nobody"), ...)` — an
+  assertion that can never fail — and its name promised a case it didn't test. Removed and renamed.
