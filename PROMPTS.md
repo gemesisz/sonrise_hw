@@ -295,6 +295,22 @@ for the three repository queries added since phase 1 (D42). Validation applied:
   the root causes were exactly right, so the helper now asserts only the root cause.
 - Mutation check: removing the event unique constraint from the changeset fails the test.
 
+**Prompt 14:**
+> lets do the admin REST API
+
+AI asked four open questions first; my answers: **deleting a user deletes their history too**;
+**H2 console behind the admin login**; **"retry now" only for FAILED**; **page + size** paging.
+
+AI response: admin API (5 controllers, services, DTO records, `ProblemDetail` error handler),
+security config, repository queries, 22 new API/security tests. Validation applied:
+- Checked Boot 4 / Spring Security 7 module and package locations before coding.
+- Kept CSRF on despite basic auth and explained why; security tested over real HTTP.
+- **Bug found by its own test:** CSRF rejections came back as 401 (login prompt) instead of 403,
+  because the error page dispatch was re-secured; fixed and explained (D45).
+- Mutation checks on the security config (CSRF off, everything public) — both caught.
+- Verified the "generated password is logged" claim by running the real app.
+- Masked Slack webhook URLs in API responses (secret, D43).
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

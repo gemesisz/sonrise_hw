@@ -1,5 +1,6 @@
 package com.sonrise.alerting.config;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -24,7 +25,12 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests(requests -> requests.anyRequest().authenticated())
+                .authorizeHttpRequests(requests -> requests
+                        // A rejected request (e.g. 403 missing CSRF token) is forwarded to /error; that
+                        // ERROR dispatch must not be re-checked, or every rejection turns into a
+                        // misleading 401 login prompt. It only renders the error that already happened.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // The H2 console posts its own forms without our token; it is still behind the login.

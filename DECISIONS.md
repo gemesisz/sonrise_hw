@@ -454,3 +454,52 @@ Format: **context → decision → alternatives considered → why.**
   (status filter, due boundary, oldest first, batch limit, everything needed for sending loaded).
 - **Mutation check:** removing the unique constraint from the event changeset makes the
   duplicate-event test fail — it tests the database, not the entity annotation.
+
+## Phase 3 — Admin REST API
+
+### D43 — API decisions (mine) and shape
+- **Deleting a user deletes their notification history too.** Done explicitly in the service
+  (`deleteByUserId`, then the user; subscriptions and channel links go by DB cascade). The FK on
+  `notification.user_id` stays RESTRICT, so nothing else can wipe history by accident — the
+  persistence test still proves the database protects it. Events are kept (not the user's).
+- **"Retry now" only for FAILED** notifications; SENT and FAILED_PERMANENTLY → 409 with the reason.
+  The check is repeated inside the retry job, so a race with the scheduled retry also gives 409.
+- **Paging: `page` + `size`** (size 1–100), returned as our own `PageResponse` record
+  (items, page, size, totalItems, totalPages), not Spring Data's `Page` JSON. Newest first.
+- **H2 console behind the admin login** (see D44).
+- Request/response **records** in `admin.dto`, separate from entities, with Bean Validation;
+  services map entities to responses inside transactions (`open-in-view` is off).
+- Channel addresses are validated by the channel strategy itself (`validateAddress`) → 400 with
+  the reason in `errors.address`. PUT on subscriptions and channel links is idempotent (create or
+  update).
+- **Slack webhook URLs are masked in responses** (`displayAddress`, e.g.
+  `https://hooks.slack.com/services/…oKeN`) — the admin set it, but it's a secret and shouldn't be
+  on screen or in screenshots.
+- Errors: RFC 9457 `ProblemDetail` for everything; validation failures add an `errors` map
+  (field/parameter → message) for the admin page.
+- Endpoints: users CRUD; `PUT/DELETE /users/{id}/subscriptions/{category}`;
+  `PUT/DELETE /users/{id}/channels/{channel}`; `GET /categories`; `GET/PATCH /channels`;
+  `GET /events` (category, source, minSeverity); `GET /notifications` (status, userId);
+  `POST /notifications/{id}/retry`; `GET /sources`; `POST /detection/run`; `POST /fake-events`.
+
+### D44 — Security: basic auth, CSRF kept on, no hard-coded password
+- One admin user from `spring.security.user.*`; the password comes from
+  `SPRING_SECURITY_USER_PASSWORD`, otherwise Spring Boot generates one and logs it — verified by
+  running the app and logging in with the generated password. Tests use a test-only password.
+- **CSRF stays enabled** even though the API uses basic auth: browsers cache basic credentials and
+  send them on cross-site requests too. `csrf().spa()` hands out an `XSRF-TOKEN` cookie that the
+  page echoes as `X-XSRF-TOKEN`. The H2 console is exempt from CSRF (it posts its own forms) but
+  still needs the login; frames allowed from the same origin for it.
+- Stateless sessions. Security tests run over **real HTTP** (random port), not MockMvc, so the H2
+  console servlet and the CSRF cookie round trip behave as in a browser.
+- **Mutation checks:** disabling CSRF fails the CSRF test; making everything public fails both
+  login tests.
+
+### D45 — Bug caught by the security test: rejected writes answered 401 instead of 403
+- **Symptom:** a POST with valid credentials but no CSRF token got **401** (login prompt), not 403.
+- **Cause:** the CSRF filter rejects before basic auth runs; the 403 is forwarded to Spring Boot's
+  `/error`, and that ERROR dispatch went through the security chain again, where "authenticated"
+  turned it into a 401. Still rejected (no security hole), but a browser would show a login prompt
+  for a missing token — misleading and hard to debug.
+- **Fix:** permit the ERROR dispatcher type (it only renders an error that already happened).
+  Unauthenticated requests to the API itself are still 401 (tested).

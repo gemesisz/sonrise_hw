@@ -98,7 +98,7 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
   an end-to-end integration test ✅ (fake source → dispatcher → email via GreenMail,
   Slack via a mock HTTP server, plus retry and timeout; `EndToEndTest`, D40).
 
-**Phase 3 — Admin REST API**
+**Phase 3 — Admin REST API** ✅ (D43–D45)
 - Request/response **records**, separate from entities; Bean Validation on requests.
 - Global exception handler returning `ProblemDetail`.
 - Spring Security with HTTP basic auth, one admin user from config/env.
