@@ -14,6 +14,7 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import java.time.Duration;
 import java.io.IOException;
 import java.io.StringReader;
 import java.time.Clock;
@@ -43,13 +44,14 @@ public class RssNewsSource extends AbstractEventSource<String> {
     private final Clock clock;
 
     public RssNewsSource(@Value("${alerting.sources.rss.enabled}") boolean enabled,
+                         @Value("${alerting.sources.rss.interval}") Duration interval,
                          @Value("${alerting.sources.rss.url}") String url,
                          @Value("${alerting.sources.rss.default-severity}") Severity defaultSeverity,
                          @Value("${alerting.sources.rss.high-severity-keywords}") List<String> highSeverityKeywords,
                          RestClient.Builder restClientBuilder,
                          Clock clock,
                          EventStore eventStore) {
-        super(CODE, enabled, eventStore);
+        super(CODE, enabled, interval, eventStore);
         this.restClient = restClientBuilder.build();
         this.url = url;
         this.defaultSeverity = defaultSeverity;

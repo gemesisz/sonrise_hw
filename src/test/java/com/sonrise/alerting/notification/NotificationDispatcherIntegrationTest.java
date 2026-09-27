@@ -31,6 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -219,6 +220,35 @@ class NotificationDispatcherIntegrationTest {
         assertThat(second.duplicates()).isEqualTo(1);
         verify(email, times(1)).send(anyString(), any(Event.class));
         assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void storesButDoesNotNotifyEventsOlderThanMaxAge() {
+        AppUser alice = user("Alice", "NATURAL_DISASTERS", Severity.LOW);
+        link(alice, "EMAIL", "alice@example.com");
+
+        // Like the first run after a restart: the feed still lists yesterday's earthquakes.
+        DetectionResult result = detectAt("NATURAL_DISASTERS", Instant.now().minus(Duration.ofMinutes(11)), "old-quake");
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(events.count()).isEqualTo(1);
+        verify(email, never()).send(anyString(), any(Event.class));
+        assertThat(notifications.count()).isZero();
+    }
+
+    @Test
+    void notifiesEventsYoungerThanMaxAge() {
+        AppUser alice = user("Alice", "NATURAL_DISASTERS", Severity.LOW);
+        link(alice, "EMAIL", "alice@example.com");
+
+        detectAt("NATURAL_DISASTERS", Instant.now().minus(Duration.ofMinutes(9)), "recent-quake");
+
+        verify(email).send(eq("alice@example.com"), any(Event.class));
+    }
+
+    private DetectionResult detectAt(String category, Instant occurredAt, String id) {
+        fakeSource.inject(new EventCandidate(category, id, "Test event " + id, null, null, Severity.HIGH, occurredAt));
+        return fakeSource.detect();
     }
 
     private DetectionResult detect(String category, Severity severity, String... ids) {

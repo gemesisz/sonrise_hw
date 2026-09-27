@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.web.client.RestClient;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -19,7 +20,7 @@ class RssNewsSourceTest {
 
     private static final Instant NOW = Instant.parse("2026-09-27T10:00:00Z");
 
-    private final RssNewsSource source = new RssNewsSource(true, "http://unused", Severity.MEDIUM,
+    private final RssNewsSource source = new RssNewsSource(true, Duration.ofMinutes(10), "http://unused", Severity.MEDIUM,
             List.of("killed", " WAR ", "evacuat*", ""), RestClient.builder(), Clock.fixed(NOW, ZoneOffset.UTC),
             mock(EventStore.class));
 

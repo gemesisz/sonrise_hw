@@ -3,6 +3,7 @@ package com.sonrise.alerting.source;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -19,8 +20,10 @@ public class FakeEventSource extends AbstractEventSource<List<EventCandidate>> {
 
     private final Queue<EventCandidate> pending = new ConcurrentLinkedQueue<>();
 
-    public FakeEventSource(@Value("${alerting.sources.fake.enabled}") boolean enabled, EventStore eventStore) {
-        super(CODE, enabled, eventStore);
+    public FakeEventSource(@Value("${alerting.sources.fake.enabled}") boolean enabled,
+                           @Value("${alerting.sources.fake.interval}") Duration interval,
+                           EventStore eventStore) {
+        super(CODE, enabled, interval, eventStore);
     }
 
     public void inject(EventCandidate candidate) {

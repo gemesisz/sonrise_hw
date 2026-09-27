@@ -3,6 +3,7 @@ package com.sonrise.alerting.source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -18,11 +19,13 @@ public abstract class AbstractEventSource<T> {
 
     private final String code;
     private final boolean enabled;
+    private final Duration interval;
     private final EventStore eventStore;
 
-    protected AbstractEventSource(String code, boolean enabled, EventStore eventStore) {
+    protected AbstractEventSource(String code, boolean enabled, Duration interval, EventStore eventStore) {
         this.code = code;
         this.enabled = enabled;
+        this.interval = interval;
         this.eventStore = eventStore;
     }
 
@@ -38,6 +41,13 @@ public abstract class AbstractEventSource<T> {
      */
     public final boolean isEnabled() {
         return enabled;
+    }
+
+    /**
+     * From config ({@code alerting.sources.<name>.interval}): minimum time between scheduled runs.
+     */
+    public final Duration interval() {
+        return interval;
     }
 
     public final DetectionResult detect() {

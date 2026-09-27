@@ -7,6 +7,7 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,11 +27,12 @@ public class UsgsEarthquakeSource extends AbstractEventSource<String> {
     private final JsonMapper jsonMapper;
 
     public UsgsEarthquakeSource(@Value("${alerting.sources.usgs.enabled}") boolean enabled,
+                                @Value("${alerting.sources.usgs.interval}") Duration interval,
                                 @Value("${alerting.sources.usgs.url}") String url,
                                 RestClient.Builder restClientBuilder,
                                 JsonMapper jsonMapper,
                                 EventStore eventStore) {
-        super(CODE, enabled, eventStore);
+        super(CODE, enabled, interval, eventStore);
         this.restClient = restClientBuilder.build();
         this.url = url;
         this.jsonMapper = jsonMapper;

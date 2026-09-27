@@ -327,3 +327,55 @@ Format: **context → decision → alternatives considered → why.**
   that they would propagate into the detection loop was wrong. The catch stays (it logs which
   event failed) with a corrected comment; the test stays because it guards the behaviour that
   matters, whichever layer provides it.
+
+### D35 — Detection scheduler: one tick, per-source intervals, per-source lock
+- **Decision:** a single `@Scheduled` tick (`alerting.detection.tick`, 15s) runs every enabled
+  source whose own `alerting.sources.<name>.interval` has elapsed (fake 15s, USGS 5m, RSS 10m,
+  CoinGecko 5m). `runNow()` runs every enabled source immediately and returns a `SourceRun` per
+  source (COMPLETED / FAILED / SKIPPED_ALREADY_RUNNING) — ready for the admin trigger endpoint.
+- **Alternatives:** one `@Scheduled` method per source (duplicated scheduling code — rejected
+  earlier in D17); registering a task per source at startup (more moving parts).
+- **Overlap guard:** a `ReentrantLock` per source, `tryLock` — a second attempt while one is
+  running is *skipped*, not queued. Per source, so a slow USGS call never blocks the fake source.
+  This closes the check-then-insert race noted in D27 (within one instance).
+- The last start time is recorded *before* running, so a failing source waits its interval
+  instead of being retried every tick. One failing source never stops the others.
+- The interval was added to the source constructors next to `enabled`, rather than having the
+  scheduler guess config keys from source codes.
+- **Verified:** a concurrency test holds one run inside `detect()` while `runNow()` is called;
+  a mutation check (lock disabled) makes that test fail.
+
+### D36 — Tests must never poll the live feeds
+- **Risk spotted before coding:** with scheduling on, every `@SpringBootTest` context would call
+  USGS/BBC/CoinGecko and inject real events into the dispatcher tests' database.
+- **Decision:** `@EnableScheduling` sits on a config class guarded by
+  `alerting.detection.scheduling-enabled`; `src/test/resources/config/application.yml` sets it to
+  `false`. (Boot loads `classpath:/config/application.yml` *in addition to* the main file, so the
+  main config still applies.)
+- **Verified both ways:** no live source runs in the full test log; forcing the flag back on for
+  one test class made live polling appear within 3 seconds.
+
+### D37 — First live run of the real sources (closes D31)
+- Ran the packaged app for 40s against the live feeds: USGS 47 events, BBC RSS 26, CoinGecko 0
+  (all moves < 3%), fake source every 15s; no errors or warnings; all 73 events dispatched.
+- **Found — open decision:** the first run after startup stores the whole current window
+  (a day of earthquakes, the full RSS feed) as *new* events. With subscribers already present,
+  they would get a burst of old news at every restart (H2 is in-memory, so every restart is a
+  first run). Options: skip notifying events that occurred before startup, notify only events
+  younger than a configurable age, or treat each source's first run as a silent baseline.
+  → resolved in D38.
+
+### D38 — Only notify events younger than 10 minutes
+- **Decision (mine):** option 2 of D37, with a 10-minute limit
+  (`alerting.notification.max-event-age: 10m`).
+- **Where:** in the dispatcher, not the sources: old events are still stored (they belong in the
+  admin history), they are just not notified. It is a notification rule, so it lives where
+  notification is decided. Measured on `occurred_at`; an event exactly at the limit is notified.
+- **Why over the alternatives:** "before startup" doesn't help when a feed re-publishes old items
+  while running; a "silent first run" needs per-source state. The age rule covers both cases
+  with one config value.
+- **Side effect:** an event that reaches us more than 10 minutes after it happened (slow feed,
+  long source interval) is never notified. With the current intervals (≤ 10m) a fresh event is
+  caught in time, but a longer interval must stay below this limit.
+- **Verified:** tests for 11 min (stored, not notified) and 9 min (notified); mutation check
+  (rule removed) fails the test; live run held back all 73 first-run events.

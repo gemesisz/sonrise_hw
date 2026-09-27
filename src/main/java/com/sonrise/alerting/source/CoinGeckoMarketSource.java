@@ -8,6 +8,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -41,13 +42,14 @@ public class CoinGeckoMarketSource extends AbstractEventSource<String> {
     private final Clock clock;
 
     public CoinGeckoMarketSource(@Value("${alerting.sources.coingecko.enabled}") boolean enabled,
+                                 @Value("${alerting.sources.coingecko.interval}") Duration interval,
                                  @Value("${alerting.sources.coingecko.url}") String url,
                                  @Value("${alerting.sources.coingecko.coins}") List<String> coins,
                                  RestClient.Builder restClientBuilder,
                                  JsonMapper jsonMapper,
                                  Clock clock,
                                  EventStore eventStore) {
-        super(CODE, enabled, eventStore);
+        super(CODE, enabled, interval, eventStore);
         this.restClient = restClientBuilder.build();
         this.url = url;
         this.coins = coins.stream().map(String::trim).filter(coin -> !coin.isEmpty()).toList();

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.function.Function;
@@ -90,7 +91,7 @@ class AbstractEventSourceTest {
         private final Function<String, List<EventCandidate>> parse;
 
         StubSource(EventStore store, Supplier<String> fetch, Function<String, List<EventCandidate>> parse) {
-            super("TEST", true, store);
+            super("TEST", true, Duration.ofMinutes(1), store);
             this.fetch = fetch;
             this.parse = parse;
         }

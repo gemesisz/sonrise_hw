@@ -3,6 +3,7 @@ package com.sonrise.alerting.source;
 import com.sonrise.alerting.domain.Severity;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +16,7 @@ import static org.mockito.Mockito.when;
 class FakeEventSourceTest {
 
     private final EventStore store = mock(EventStore.class);
-    private final FakeEventSource source = new FakeEventSource(true, store);
+    private final FakeEventSource source = new FakeEventSource(true, Duration.ofSeconds(15), store);
 
     @Test
     void injectedEventsArePickedUpOnceByTheNextRun() {

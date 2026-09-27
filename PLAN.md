@@ -89,7 +89,7 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
 2. Event sources ✅: `AbstractEventSource` (Template Method) + `FakeEventSource`, then
    `UsgsEarthquakeSource`, `RssNewsSource`, `CoinGeckoMarketSource`; each can be
    enabled/disabled and given its own interval in config.
-3. Detection scheduler + dedupe on `(source, external_id)`; guarded against a
+3. Detection scheduler ✅ + dedupe on `(source, external_id)`; guarded against a
    scheduled run and a manual trigger overlapping.
 4. Dispatcher (Observer) ✅: listens for `EventDetected`, matches subscriptions by
    category and minimum severity, creates `notification` rows, sends them.

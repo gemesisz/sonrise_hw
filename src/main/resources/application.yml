@@ -29,20 +29,32 @@ alerting:
   channels:
     email:
       from: ${ALERTING_EMAIL_FROM:alerts@alerting.local}
+  notification:
+    # Events older than this when detected are stored but not notified (no burst of old news
+    # on the first run after a restart).
+    max-event-age: 10m
+  detection:
+    # How often the scheduler checks which sources are due; each source has its own interval.
+    tick: 15s
+    scheduling-enabled: true
   sources:
     fake:
       enabled: true
+      interval: 15s
     usgs:
       enabled: true
+      interval: 5m
       # All earthquakes M2.5+ from the past day; dedup makes re-reading the same window harmless.
       url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson
     rss:
       enabled: true
+      interval: 10m
       url: https://feeds.bbci.co.uk/news/world/rss.xml
       default-severity: MEDIUM
       # Whole words, case-insensitive; a trailing * matches a prefix (evacuat* -> evacuation).
       high-severity-keywords: breaking, killed, dead, war, attack*, explosion*, earthquake*, tsunami*, evacuat*
     coingecko:
       enabled: true
+      interval: 5m
       url: https://api.coingecko.com/api/v3/simple/price
       coins: bitcoin, ethereum, solana

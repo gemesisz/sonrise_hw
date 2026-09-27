@@ -1,0 +1,6 @@
+# Test-only overrides. Spring Boot loads classpath:/config/application.yml *in addition to*
+# (and with priority over) classpath:/application.yml, so the main config still applies.
+alerting:
+  detection:
+    # Never poll the live feeds from test contexts; tests call runNow()/detect() explicitly.
+    scheduling-enabled: false

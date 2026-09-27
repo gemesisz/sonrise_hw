@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -25,7 +26,7 @@ class CoinGeckoMarketSourceTest {
 
     private final RestClient.Builder builder = RestClient.builder();
     private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    private final CoinGeckoMarketSource source = new CoinGeckoMarketSource(true,
+    private final CoinGeckoMarketSource source = new CoinGeckoMarketSource(true, Duration.ofMinutes(5),
             "https://api.coingecko.com/api/v3/simple/price", List.of("bitcoin", " ethereum "),
             builder, JsonMapper.builder().build(), Clock.fixed(NOW, ZoneOffset.UTC), mock(EventStore.class));
 

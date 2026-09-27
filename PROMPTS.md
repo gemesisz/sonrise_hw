@@ -232,6 +232,31 @@ running the real flow with real commits (only channels mocked). Validation appli
   assumption was wrong; corrected the code comment (D34).
 - Closed D26 (lazy category) with a test that reads the category outside a transaction.
 
+**Prompt 9:**
+> now do the schedulers with runNow()
+
+AI response: `DetectionScheduler` (one tick, per-source intervals, `runNow()`, per-source
+overlap lock), `SourceRun` result, scheduling config switchable by property, interval per
+source in config, 5 new scheduler tests. Validation applied:
+- Spotted before coding that enabling scheduling would make every test context poll the live
+  feeds; turned it off for tests via `config/application.yml`, then proved the override works by
+  forcing it back on for one run and seeing live polling appear (D36).
+- A match in the "no live polling" check turned out to be a simulated failure from a unit
+  test — checked rather than assumed.
+- Mutation check: disabling the lock makes the concurrency test fail (D35).
+- First live run of the real sources: USGS 47, RSS 26, CoinGecko 0 events, no errors (D37).
+  It revealed a new issue: every restart re-notifies a full day of old events — raised as an
+  open decision.
+
+**Prompt 10:**
+> Yes option two, last 10 minutes is enough
+
+AI response: added `alerting.notification.max-event-age: 10m`; the dispatcher stores old
+events but does not notify them. Two new integration tests (11 min → not notified, 9 min →
+notified). Validation: mutation check (rule removed → test fails); live run held back all 73
+first-run events. Noted the side effect: a source interval longer than 10 minutes would miss
+events (D38).
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -15,7 +16,7 @@ import static org.mockito.Mockito.mock;
 
 class UsgsEarthquakeSourceTest {
 
-    private final UsgsEarthquakeSource source = new UsgsEarthquakeSource(true, "http://unused",
+    private final UsgsEarthquakeSource source = new UsgsEarthquakeSource(true, Duration.ofMinutes(5), "http://unused",
             RestClient.builder(), JsonMapper.builder().build(), mock(EventStore.class));
 
     @Test

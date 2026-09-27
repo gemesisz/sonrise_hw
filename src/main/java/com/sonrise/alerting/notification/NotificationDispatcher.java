@@ -9,6 +9,7 @@ import com.sonrise.alerting.repository.NotificationRepository;
 import com.sonrise.alerting.repository.UserChannelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -17,6 +18,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -38,13 +40,15 @@ public class NotificationDispatcher {
     private final NotificationChannelRegistry channelRegistry;
     private final TransactionTemplate transactions;
     private final Clock clock;
+    private final Duration maxEventAge;
 
     public NotificationDispatcher(EventRepository eventRepository,
                                   UserChannelRepository userChannelRepository,
                                   NotificationRepository notificationRepository,
                                   NotificationChannelRegistry channelRegistry,
                                   PlatformTransactionManager transactionManager,
-                                  Clock clock) {
+                                  Clock clock,
+                                  @Value("${alerting.notification.max-event-age}") Duration maxEventAge) {
         this.eventRepository = eventRepository;
         this.userChannelRepository = userChannelRepository;
         this.notificationRepository = notificationRepository;
@@ -55,6 +59,7 @@ public class NotificationDispatcher {
         // join it, so nothing written here would ever be committed.
         this.transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+        this.maxEventAge = maxEventAge;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -78,6 +83,12 @@ public class NotificationDispatcher {
     private List<Delivery> createNotifications(Long eventId) {
         Event event = eventRepository.findWithCategoryById(eventId)
                 .orElseThrow(() -> new IllegalStateException("Event " + eventId + " not found"));
+        // Feeds return a whole window (e.g. a day of earthquakes), and every restart re-reads it
+        // as new. Old events are still stored (history), just not notified.
+        if (event.getOccurredAt().isBefore(clock.instant().minus(maxEventAge))) {
+            log.info("Event {} occurred at {}, older than {}: not notified", eventId, event.getOccurredAt(), maxEventAge);
+            return List.of();
+        }
         List<UserChannel> targets = userChannelRepository.findDeliveryTargets(
                 event.getCategory().getId(), event.getSeverity().andBelow());
         return targets.stream()
