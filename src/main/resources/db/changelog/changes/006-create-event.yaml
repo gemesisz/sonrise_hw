@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-event
+      author: gemesisz
+      changes:
+        - createTable:
+            tableName: event
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_event
+              - column:
+                  name: category_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Which EventSource produced it (e.g. USGS, RSS, FAKE)
+              - column:
+                  name: source
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              # The id the source itself uses; with `source` it identifies the event for dedup
+              - column:
+                  name: external_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(4000)
+              - column:
+                  name: url
+                  type: VARCHAR(1000)
+              - column:
+                  name: severity
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: detected_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: event
+            columnNames: source, external_id
+            constraintName: uq_event_source_external_id
+        - addForeignKeyConstraint:
+            baseTableName: event
+            baseColumnNames: category_id
+            referencedTableName: category
+            referencedColumnNames: id
+            constraintName: fk_event_category
+        - createIndex:
+            tableName: event
+            indexName: ix_event_category
+            columns:
+              - column:
+                  name: category_id
+        - createIndex:
+            tableName: event
+            indexName: ix_event_detected_at
+            columns:
+              - column:
+                  name: detected_at

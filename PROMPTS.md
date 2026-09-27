@@ -135,6 +135,32 @@ scope) and `DECISIONS.md` (D1–D19).
 - Caught that `user` is a reserved word in H2 → table named `app_user`.
 - Recorded the known risk of layer-by-layer order and how it is mitigated (D18).
 
+**Prompt 5:**
+> Start phase 1
+
+AI response: wrote 8 Liquibase changesets (7 tables + seed data) and the JPA
+entities. Validation applied:
+- Verified all 8 changesets ran, and proved schema validation actually works by
+  temporarily breaking one column mapping (startup failed with
+  `missing column [link]`), then restoring it.
+- Checked the real jar contents for Boot 4 test annotations instead of assuming
+  Boot 3 package names (both `DataJpaTest` and `TestEntityManager` moved).
+- Persistence tests found a real schema bug: the raw-SQL CHECK constraints on
+  enum columns make H2 fail on every valid insert (`Check constraint invalid`,
+  23514 — evaluation error, not a violation). Schema validation at startup did
+  not catch it.
+- Also caught a weak test that "passed" for the wrong reason (it asserted only
+  that the constraint name appeared, not that it was a violation).
+
+**Course corrections from me during Prompt 5** (given while rejecting AI tool calls):
+> we do not need the repositories yet
+
+> maybe write this tests after the repositories exist?
+
+AI response: dropped the repositories from phase 1; agreed to move persistence
+tests to when repositories exist, but flagged that the CHECK-constraint bug
+must be fixed regardless.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

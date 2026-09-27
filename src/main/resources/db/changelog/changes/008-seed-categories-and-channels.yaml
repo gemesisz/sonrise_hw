@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-seed-categories-and-channels
+      author: gemesisz
+      changes:
+        - insert:
+            tableName: category
+            columns:
+              - column: { name: code, value: BREAKING_NEWS }
+              - column: { name: name, value: Breaking news }
+              - column: { name: description, value: Major world news headlines }
+        - insert:
+            tableName: category
+            columns:
+              - column: { name: code, value: MARKETS }
+              - column: { name: name, value: Market movements }
+              - column: { name: description, value: Significant price changes in financial markets }
+        - insert:
+            tableName: category
+            columns:
+              - column: { name: code, value: NATURAL_DISASTERS }
+              - column: { name: name, value: Natural disasters }
+              - column: { name: description, value: Earthquakes and other natural disasters }
+        - insert:
+            tableName: channel
+            columns:
+              - column: { name: code, value: EMAIL }
+              - column: { name: name, value: Email }
+        - insert:
+            tableName: channel
+            columns:
+              - column: { name: code, value: SLACK }
+              - column: { name: name, value: Slack }

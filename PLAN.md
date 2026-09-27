@@ -76,11 +76,13 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
 
 **Phase 1 — Database and entities**
 - Liquibase changesets, one file per table, plus seed data for categories and channels.
-- JPA entities + Spring Data repositories.
-- Validation: Hibernate `ddl-auto: validate` must pass against the Liquibase schema;
-  `@DataJpaTest` tests that FKs and unique constraints actually reject bad data.
+- JPA entities (no repositories yet — they arrive with the business logic that uses them, D21).
+- Validation: Hibernate `ddl-auto: validate` must pass against the Liquibase schema
+  (proven to fail on a deliberately broken mapping); persistence tests that FKs and
+  unique constraints actually reject bad data are written against the repositories.
 
 **Phase 2 — Business logic**
+0. Spring Data repositories + `@DataJpaTest` persistence tests (constraints, cascades, seed data).
 1. Channel strategies: `NotificationChannel` interface, `EmailChannel`, `SlackChannel`,
    a registry keyed by channel code, and a per-channel address validator.
    Startup check: every `channel` row has a strategy bean and vice versa.

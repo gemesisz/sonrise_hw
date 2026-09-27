@@ -1,0 +1,108 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-notification
+      author: gemesisz
+      changes:
+        - createTable:
+            tableName: notification
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_notification
+              - column:
+                  name: event_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempts
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_attempt_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: last_error
+                  type: VARCHAR(2000)
+              - column:
+                  name: sent_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        # One delivery per event x user x channel: makes sending idempotent.
+        - addUniqueConstraint:
+            tableName: notification
+            columnNames: event_id, user_id, channel_id
+            constraintName: uq_notification_event_user_channel
+        # Delivery history is kept: an event or user with notifications cannot be deleted
+        # (no ON DELETE CASCADE here, on purpose).
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: event_id
+            referencedTableName: event
+            referencedColumnNames: id
+            constraintName: fk_notification_event
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: user_id
+            referencedTableName: app_user
+            referencedColumnNames: id
+            constraintName: fk_notification_user
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_notification_channel
+        - createIndex:
+            tableName: notification
+            indexName: ix_notification_user
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: notification
+            indexName: ix_notification_channel
+            columns:
+              - column:
+                  name: channel_id
+        # Used by the retry job: "failed and due again".
+        - createIndex:
+            tableName: notification
+            indexName: ix_notification_status_next_attempt
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: next_attempt_at
+        # Enum columns have no CHECK constraint on purpose: H2 2.4.240 cannot evaluate
+        # string CHECKs once the creating connection is closed (see DECISIONS.md D20).
+        # Numeric checks are not affected.
+        - sql:
+            sql: >
+              ALTER TABLE notification ADD CONSTRAINT ck_notification_attempts
+              CHECK (attempts >= 0)

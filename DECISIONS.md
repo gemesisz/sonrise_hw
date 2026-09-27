@@ -142,3 +142,42 @@ Format: **context → decision → alternatives considered → why.**
 - **Decision:** verified with `mvn dependency:tree` that `spring-boot-starter-test`
   already includes JUnit Jupiter 6.0.3, Mockito 5.23.0 and AssertJ.
   GreenMail / a mock HTTP server will be added for channel integration tests when needed.
+- **Amendment (phase 1):** Spring Boot 4 split the JPA test slice out of
+  `spring-boot-starter-test`, so `spring-boot-starter-data-jpa-test` was added for
+  `@DataJpaTest`. Verified on Maven Central and in the jar: `@DataJpaTest` and
+  `TestEntityManager` moved to new packages compared to Boot 3.
+
+## Phase 1 — Database and entities
+
+### D20 — No CHECK constraints on enum (text) columns: H2 2.4.240 bug
+- **Context:** the first version of the schema had CHECK constraints restricting
+  `event.severity`, `user_category.min_severity` and `notification.status` to their
+  enum values. Persistence tests failed on every *valid* insert with
+  `Check constraint invalid` (H2 23514) — an evaluation error, not a rejected value.
+  Startup schema validation did not catch it (it only compares columns and types).
+- **Wrong first diagnosis (AI):** the Hibernate bind log showed enums bound as H2 `ENUM`
+  instead of `VARCHAR`, and the AI called that the root cause. The proposed fix
+  (`@JdbcTypeCode(SqlTypes.VARCHAR)`) was applied — and the tests still failed. The fix
+  was reverted. Lesson: a diagnosis isn't confirmed until the fix makes the failure go away.
+- **Actual root cause:** the underlying H2 error was `The database has been closed` (90098).
+  Reproduced with plain JDBC, no Spring/Hibernate: in H2 2.4.240, a CHECK that compares a
+  text column with string literals (`IN (...)`, `=`/`OR`, inline or via `ALTER TABLE`)
+  fails once the connection that created it is closed. Numeric checks are unaffected.
+  Liquibase creates constraints on its own connection, which is then closed.
+- **Why it matters beyond tests:** the app's connection pool keeps Liquibase's connection
+  alive, which hides the bug — until the pool retires it (HikariCP `maxLifetime`, 30 min
+  by default). After that every insert into these tables would fail in the running app.
+- **Decision:** dropped the three text CHECK constraints; the Java enums already restrict
+  what the application writes. Kept the numeric `ck_notification_attempts` (`attempts >= 0`).
+- **Note on D18 ("never edit old changesets"):** the changesets were edited in place because
+  they had never been applied to any persistent database (H2 in-memory) or committed.
+  From the first commit containing them on, fixes go in as new changesets.
+
+### D21 — Repositories and persistence tests deferred
+- **Context:** the AI started adding Spring Data repositories and `@DataJpaTest` tests in phase 1.
+- **Decision (mine):** phase 1 is schema + entities only; repositories come when business
+  logic needs them, and persistence tests are written against those repositories.
+- **Note:** the draft persistence test (`PersistenceMappingTest`, using `TestEntityManager`)
+  is what exposed the D20 bug — evidence that the schema needs insert-level tests, not
+  just startup validation. It is kept as a safety net until phase 2, then rewritten
+  against the repositories.
