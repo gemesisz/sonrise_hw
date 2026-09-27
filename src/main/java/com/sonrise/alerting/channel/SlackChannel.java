@@ -5,6 +5,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -62,10 +63,21 @@ public class SlackChannel implements NotificationChannel {
                     .body(Map.of("text", text(event)))
                     .retrieve()
                     .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            // Slack answered with an error status; its body names the problem (e.g. "no_service").
+            throw new NotificationDeliveryException(
+                    "Slack webhook returned " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString(), e);
         } catch (RestClientException e) {
-            // Deliberately not including the webhook URL: it is a secret.
-            throw new NotificationDeliveryException("Slack webhook call failed: " + e.getMessage(), e);
+            // I/O errors (timeouts, refused connections) put the full URL in their message, and the
+            // webhook URL is a secret: anyone holding it can post. Mask it before it reaches the
+            // database or the admin view.
+            throw new NotificationDeliveryException(
+                    "Slack webhook call failed: " + redact(e.getMessage(), address), e);
         }
+    }
+
+    private static String redact(String message, String webhookUrl) {
+        return message == null ? null : message.replace(webhookUrl, "<webhook URL>");
     }
 
     private String text(Event event) {

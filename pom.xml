@@ -69,6 +69,21 @@
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Real SMTP server for the end-to-end test (the Slack side uses the JDK's HttpServer) -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.14</version>
+            <scope>test</scope>
+            <exclusions>
+                <!-- All-in-one jar duplicating the jakarta.mail classes the app already gets
+                     from jakarta.mail-api + angus-mail (via spring-boot-starter-mail). -->
+                <exclusion>
+                    <groupId>org.eclipse.angus</groupId>
+                    <artifactId>jakarta.mail</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
     <build>

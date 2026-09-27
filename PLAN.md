@@ -95,8 +95,8 @@ Spring Boot 4.1.1, Java 21, Maven, JPA/Hibernate, Liquibase, H2 in-memory.
    category and minimum severity, creates `notification` rows, sends them.
 5. Retry job ✅: backoff, max attempts from config, then `FAILED_PERMANENTLY`.
 - Validation: Mockito unit tests for matching, severity mapping, retry rules;
-  an end-to-end integration test (fake source → dispatcher → email via GreenMail,
-  Slack via a mock HTTP server).
+  an end-to-end integration test ✅ (fake source → dispatcher → email via GreenMail,
+  Slack via a mock HTTP server, plus retry and timeout; `EndToEndTest`, D40).
 
 **Phase 3 — Admin REST API**
 - Request/response **records**, separate from entities; Bean Validation on requests.

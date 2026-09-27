@@ -217,6 +217,8 @@ Format: **context → decision → alternatives considered → why.**
   metadata: the `spring.http.client.*` form the AI might reach for is deprecated since Boot 4.0.
 - **Not yet verified:** that these timeouts actually reach the `RestClient` built from Boot's
   builder — to be covered by the end-to-end test (step 6).
+- **Correction (D41):** the claim "error messages never include the webhook URL" was only true for
+  HTTP error responses — I/O errors leaked it. The timeouts are now verified (D40).
 
 ### D25 — Boot 4 starters for mail and REST client
 - Neither `JavaMailSender` nor `RestClient.Builder` auto-configuration comes with the web
@@ -406,3 +408,33 @@ Format: **context → decision → alternatives considered → why.**
   (off-by-one in the attempt limit) fails both unit and integration tests.
 - **Rejected AI output:** a test ended with `verify(email, never()).send(eq("nobody"), ...)` — an
   assertion that can never fail — and its name promised a case it didn't test. Removed and renamed.
+
+### D40 — End-to-end test with real channels
+- **Decision:** `EndToEndTest` runs the whole chain with nothing in the application mocked:
+  `DetectionScheduler.runNow()` → fake source → `EventStore` → commit → dispatcher →
+  `EmailChannel` over real SMTP (**GreenMail**) and `SlackChannel` over real HTTP (the JDK's
+  built-in `HttpServer`, no extra dependency) → notification rows → retry job. Only time is
+  controlled (a test clock); real sources are disabled so the test never touches the internet.
+- Covered: delivery on both channels (mail recipient/sender/subject/body; Slack JSON body and
+  content type); a Slack 500 retried and sent a minute later while email is not sent twice;
+  a stalled Slack timing out.
+- **Dependency check:** GreenMail 2.1.14 pulls `org.eclipse.angus:jakarta.mail`, an all-in-one jar
+  duplicating the `jakarta.mail.*` classes the app already gets from `jakarta.mail-api` +
+  `angus-mail`. Excluded it so only one copy is on the classpath.
+- **D24 timeouts proven:** with `read-timeout: 1s` and a Slack stalling 5s, the whole run finished
+  in ~1s. The expected error wording was wrong: the JDK client reports a read timeout as
+  "Request cancelled", not "timed out" — the elapsed time is the real assertion.
+- **Known limit:** the timing assertion (< 3s) could be flaky on a very slow CI machine.
+
+### D41 — Security fix found by the end-to-end test: webhook URL leaked into `last_error`
+- **Found:** the stalled-Slack test stored
+  `I/O error on POST request for "http://…/services/T0001/B0001/SeCrEtToKeN": Request cancelled`.
+  I/O errors (timeouts, refused connections) include the full request URL in their message; the
+  Slack webhook URL is a secret (anyone holding it can post to the channel), and `last_error` is
+  shown in the admin view.
+- **Why it slipped through:** D24 claimed URLs never appear in errors, but the unit test only
+  covered an HTTP error *response* (404), whose message has no URL. The AI generalised from the
+  one case it tested.
+- **Fix:** error responses → `Slack webhook returned <status>: <body>`; any other client error →
+  the message with the URL replaced by `<webhook URL>`. New unit test for the network-error case;
+  the end-to-end test asserts the secret path never reaches the database.

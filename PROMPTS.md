@@ -270,6 +270,21 @@ Validation applied:
 - Mutation check: off-by-one in the attempt limit fails both unit and integration tests.
 - Listed known gaps instead of hiding them: stuck PENDING rows, multi-instance double sends.
 
+**Prompt 12:**
+> now do the end-to-end test
+
+AI response: `EndToEndTest` — scheduler → fake source → dispatcher → real SMTP (GreenMail)
+and real HTTP (JDK `HttpServer`) → notification rows → retry; nothing in the app mocked.
+Validation applied:
+- Checked GreenMail's dependencies before trusting them: it brings a second copy of the
+  `jakarta.mail` classes; excluded it (D40).
+- Proved the Slack timeouts from D24 actually apply (5s stall → run finished in ~1s).
+- **Found a security bug in its own earlier code:** I/O errors put the secret Slack webhook URL
+  into `last_error` (database, admin view). D24 had claimed this couldn't happen — the unit test
+  only covered one error type. Fixed with redaction, added the missing unit test, corrected D24 (D41).
+- Its assumed timeout wording ("timed out") was wrong — the JDK client says "Request cancelled";
+  the test asserts elapsed time instead.
+
 ---
 
 <!-- Append new prompts below, in chronological order, as work continues. -->

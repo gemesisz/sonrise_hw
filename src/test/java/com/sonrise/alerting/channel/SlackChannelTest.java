@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.net.SocketTimeoutException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -78,6 +80,21 @@ class SlackChannelTest {
     }
 
     @Test
+    void networkErrorDoesNotLeakWebhookUrl() {
+        // I/O errors carry the full request URL in their message (found by the end-to-end test).
+        server.expect(requestTo(WEBHOOK))
+                .andRespond(request -> {
+                    throw new SocketTimeoutException("Read timed out");
+                });
+
+        assertThatThrownBy(() -> channel.send(WEBHOOK, TestEvents.earthquake()))
+                .isInstanceOf(NotificationDeliveryException.class)
+                .hasMessageContaining("Read timed out")
+                .hasMessageContaining("<webhook URL>")
+                .hasMessageNotContaining("XXXXSECRET");
+    }
+
+    @Test
     void wrapsSlackErrorWithoutLeakingWebhookUrl() {
         server.expect(requestTo(WEBHOOK))
                 .andRespond(withStatus(HttpStatus.NOT_FOUND).body("no_service"));
@@ -85,6 +102,7 @@ class SlackChannelTest {
         assertThatThrownBy(() -> channel.send(WEBHOOK, TestEvents.earthquake()))
                 .isInstanceOf(NotificationDeliveryException.class)
                 .hasMessageContaining("404")
+                .hasMessageContaining("no_service")
                 .hasMessageNotContaining("XXXXSECRET");
     }
 }
